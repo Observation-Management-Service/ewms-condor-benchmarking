@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
+
+import argparse
 import asyncio
 import json
 import logging
-import os
 import time
 from pathlib import Path
 
@@ -11,7 +13,15 @@ from rest_tools.client import SavedDeviceGrantAuth
 LOGGER = logging.getLogger(__name__)
 
 
-async def request_ewms(rc):
+async def request_ewms(
+    rc,
+    task_image,
+    task_runtime,
+    fail_prob,
+    do_task_runtime_poisson,
+    do_worker_speed_factor,
+    ewms_workers,
+):
     LOGGER.info("Requesting single-task workflow to EWMS...")
     post_body = {
         "public_queue_aliases": ["input-queue", "output-queue"],
@@ -20,13 +30,13 @@ async def request_ewms(rc):
                 "cluster_locations": ["sub-2"],
                 "in_queue_aliases": ["input-queue"],
                 "out_queue_aliases": ["output-queue"],
-                "task_image": os.environ["TASK_IMAGE"],
+                "task_image": task_image,
                 "task_args": "",
                 "task_env": {
-                    "TASK_RUNTIME": task_runtime,
-                    "FAIL_PROB": fail_prob,
-                    "DO_TASK_RUNTIME_POISSON": do_task_runtime_poisson,
-                    "DO_WORKER_SPEED_FACTOR": do_worker_speed_factor,
+                    "TASK_RUNTIME": str(task_runtime),
+                    "FAIL_PROB": str(fail_prob),
+                    "DO_TASK_RUNTIME_POISSON": str(do_task_runtime_poisson).lower(),
+                    "DO_WORKER_SPEED_FACTOR": str(do_worker_speed_factor).lower(),
                 },
                 "n_workers": ewms_workers,
                 "worker_config": {
@@ -107,21 +117,74 @@ async def serve_events(n_tasks, in_queue, out_queue):
 
 
 async def main():
+    """Main."""
+    parser = argparse.ArgumentParser(
+        description="Submit EWMS task workflow and collect results."
+    )
+    parser.add_argument(
+        "--task-image",
+        required=True,
+        help="Container image to run",
+    )
+    parser.add_argument(
+        "--task-runtime",
+        type=int,
+        required=True,
+        help="Average task runtime (seconds)",
+    )
+    parser.add_argument(
+        "--fail-prob",
+        type=float,
+        required=True,
+        help="Probability of simulated failure (0.0–1.0)",
+    )
+    parser.add_argument(
+        "--do-task-runtime-poisson",
+        action="store_true",
+        help="Use Poisson-distributed task duration",
+    )
+    parser.add_argument(
+        "--do-worker-speed-factor",
+        action="store_true",
+        help="Use per-worker Gaussian speed factor",
+    )
+    parser.add_argument(
+        "--ewms-workers",
+        type=int,
+        required=True,
+        help="Number of EWMS workers to deploy",
+    )
+    parser.add_argument(
+        "--n-tasks",
+        type=int,
+        required=True,
+        help="Number of events to publish",
+    )
 
-    # cl args
+    args = parser.parse_args()
+    LOGGER.info(args)
 
     rc = SavedDeviceGrantAuth(
         "https://ewms-dev.icecube.aq",
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
-        filename=str(Path(f"~/ewms-dev-device-refresh-token").expanduser().resolve()),
-        client_id="ewms-dev-public",  # ex: ewms-prod-public
+        filename=str(Path("~/ewms-dev-device-refresh-token").expanduser().resolve()),
+        client_id="ewms-dev-public",
         retries=0,
     )
 
-    workflow_id, in_mqid, out_mqid = await request_ewms(rc)
+    workflow_id, in_mqid, out_mqid = await request_ewms(
+        rc,
+        args.task_image,
+        args.task_runtime,
+        args.fail_prob,
+        args.do_task_runtime_poisson,
+        args.do_worker_speed_factor,
+        args.ewms_workers,
+    )
     in_queue, out_queue = await get_queues(rc, workflow_id, in_mqid, out_mqid)
-    await serve_events(n_tasks, in_queue, out_queue)
+    await serve_events(args.n_tasks, in_queue, out_queue)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
