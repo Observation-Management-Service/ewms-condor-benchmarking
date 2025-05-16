@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """A simulated task with some knobs."""
 
+import logging
 import os
 import random
 import sys
@@ -9,18 +10,27 @@ from pathlib import Path
 
 import numpy as np
 
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
+
 
 def get_worker_speed_factor() -> float:
     """Get the speed factor unique to the worker (used by all tasks on worker)."""
-    fpath = Path("WORKER_SPEED_FACTOR")  # TODO: store in an accessible place
+    _dir = Path(os.getenv("EWMS_TASK_DATA_HUB_DIR", "/commondir"))
+    if not _dir.exists():
+        LOGGER.warning(f"'{_dir}' does not exist -- will mkdir")
+    _dir.mkdir(exist_ok=True, parents=True)
 
+    fpath = _dir / "worker-speed-factor.txt"
     if not fpath.exists():
         # Gaussian draw from N(1.5, 0.5), clipped to [1.0, 3.0]
         value = float(np.clip(np.random.normal(loc=1.5, scale=0.5), 1.0, 3.0))
+        LOGGER.info(f"'{fpath}' did not exist, so writing the value '{value}' to it")
         fpath.write_text(str(value))
     else:
         value = float(fpath.read_text().strip())
 
+    LOGGER.info(f"using worker speed factor: {value}")
     return value
 
 
@@ -28,6 +38,7 @@ def get_task_runtime(average_runtime: int) -> float:
     """Get the runtime unique to the task (NOT used by all tasks on worker)."""
     rng = np.random.default_rng()
     poisson_time = float(rng.poisson(lam=average_runtime))  # seconds
+    LOGGER.info(f"using poisson runtime: {poisson_time}")
     return poisson_time
 
 
@@ -44,8 +55,8 @@ def main(
     do_worker_speed_factor: bool,
 ):
     """Do work (sleep) with a few optional conditions."""
-    print(
-        f"[INFO] task config: "
+    LOGGER.info(
+        f"task config: "
         f"{total_work_duration=}s, "
         f"{fail_prob=}, "
         f"{do_task_runtime_poisson=}, "
@@ -59,19 +70,19 @@ def main(
         total_work_duration = int(total_work_duration * get_worker_speed_factor())
 
     # simulate work
-    print(f"[INFO] Starting task with {total_work_duration:.1f}s duration")
+    LOGGER.info(f"Starting task with {total_work_duration:.1f}s duration")
     if not fail_prob:
         time.sleep(total_work_duration)
     else:
         sleep1, sleep2 = split_duration(total_work_duration)
         time.sleep(sleep1)
         if random.random() < fail_prob:
-            print(f"[FAIL] Simulated failure at {sleep1:.1f}s", file=sys.stderr)
+            LOGGER.info(f"simulated failure at {sleep1:.1f}s")
             sys.exit(1)
         time.sleep(sleep2)
 
     # done
-    print(f"[OK] Task completed in {total_work_duration:.1f}s")
+    LOGGER.info(f"[OK] task completed in {total_work_duration:.1f}s")
     # -> if this is an ewms task, write an output so the pilot can forward it on as an event
     if "EWMS_TASK_INFILE" in os.environ:
         with open(os.environ["EWMS_TASK_INFILE"]) as f:
@@ -87,3 +98,4 @@ if __name__ == "__main__":
         os.environ["DO_TASK_RUNTIME_POISSON"].lower() in ("1", "true", "t", "yes"),
         os.environ["DO_WORKER_SPEED_FACTOR"].lower() in ("1", "true", "t", "yes"),
     )
+    LOGGER.info("Done.")

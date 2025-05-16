@@ -4,7 +4,10 @@ import subprocess
 import sys
 
 
-def main(n_tasks, work_duration_min, work_duration_max, fail_prob):
+def main():
+    """Sequentially spawn tasks with Apptainer."""
+    n_tasks = int(os.environ["N_TASKS"])
+
     for i in range(n_tasks):
         print(f"\n--- Launching task {i + 1}/{n_tasks} ---")
         try:
@@ -13,9 +16,14 @@ def main(n_tasks, work_duration_min, work_duration_max, fail_prob):
                     "apptainer run "
                     "--containall "  # don't auto-mount anything
                     "--no-eval "  # don't interpret CL args
-                    f"--env WORK_DURATION_MIN={work_duration_min} "
-                    f"--env WORK_DURATION_MAX={work_duration_max} "
-                    f"--env FAIL_PROB={fail_prob} "
+                    #
+                    f"--mount type=bind,source={os.path.abspath('./commondir')},target=/commondir "
+                    #
+                    f"--env TASK_RUNTIME={os.environ['TASK_RUNTIME']} "
+                    f"--env FAIL_PROB={os.environ['FAIL_PROB']} "
+                    f"--env DO_TASK_RUNTIME_POISSON={os.environ['DO_TASK_RUNTIME_POISSON']} "
+                    f"--env DO_WORKER_SPEED_FACTOR={os.environ['DO_WORKER_SPEED_FACTOR']} "
+                    #
                     f"{os.environ['TASK_IMAGE']} "
                     # no args
                 ).split(),
@@ -29,9 +37,4 @@ def main(n_tasks, work_duration_min, work_duration_max, fail_prob):
 
 
 if __name__ == "__main__":
-    main(
-        int(os.environ["N_TASKS_IN_BUNDLE"]),
-        float(os.environ["WORK_DURATION_MIN"]),
-        float(os.environ["WORK_DURATION_MAX"]),
-        float(os.environ["FAIL_PROB"]),
-    )
+    main()
