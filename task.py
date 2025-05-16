@@ -15,25 +15,23 @@ def get_worker_speed_factor() -> float:
     fpath = Path("WORKER_SPEED_FACTOR")  # TODO: store in an accessible place
 
     if not fpath.exists():
-        value = 0.0  # TODO: generate # guassian
-        with open(fpath, "w") as f:
-            f.write(str(value))
+        # Gaussian draw from N(1.5, 0.5), clipped to [1.0, 3.0]
+        value = float(np.clip(np.random.normal(loc=1.5, scale=0.5), 1.0, 3.0))
+        fpath.write_text(str(value))
     else:
-        with open(fpath) as f:
-            value = float(f.read().strip())
+        value = float(fpath.read_text().strip())
 
     return value
 
 
 def get_task_runtime(average_runtime: int) -> float:
     """Get the runtime unique to the task (NOT used by all tasks on worker)."""
-    # poisson
-    rng = np.random.default_rng(None)
-    poisson_time = rng.poisson(lam=average_runtime)  # seconds
+    rng = np.random.default_rng()
+    poisson_time = float(rng.poisson(lam=average_runtime))  # seconds
     return poisson_time
 
 
-def split_duration(total_work_duration: int) -> tuple[float, float]:
+def split_duration(total_work_duration: float) -> tuple[float, float]:
     """Split the duration into two durations."""
     # we could use a Gaussian proportion, but let's keep things simple
     return total_work_duration / 2, total_work_duration / 2
@@ -61,17 +59,16 @@ def main(
         total_work_duration = int(total_work_duration * get_worker_speed_factor())
 
     # simulate work
-    print(f"[INFO] Starting task with {total_work_duration=}s, ")
+    print(f"[INFO] Starting task with {total_work_duration:.1f}s duration")
     if not fail_prob:
         time.sleep(total_work_duration)
     else:
-        # w/ potential failure part-way through work
-        first_portion, second_portion = split_duration(total_work_duration)
-        time.sleep(first_portion)
+        sleep1, sleep2 = split_duration(total_work_duration)
+        time.sleep(sleep1)
         if random.random() < fail_prob:
-            print(f"[FAIL] Simulated failure at {first_portion:.1f}s", file=sys.stderr)
+            print(f"[FAIL] Simulated failure at {sleep1:.1f}s", file=sys.stderr)
             sys.exit(1)
-        time.sleep(second_portion)
+        time.sleep(sleep2)
 
     # done
     print(f"[OK] Task completed in {total_work_duration:.1f}s")
