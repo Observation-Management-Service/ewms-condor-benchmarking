@@ -1,0 +1,9 @@
+executable            = /scratch/.../bundled_tasks.py
+log                   = /scratch/.../$(clusterid).log
+output                = /scratch/.../$(clusterid).out
+error                 = /scratch/.../$(clusterid).err
+should_transfer_files = YES
+RequestCpus           = 1
+RequestMemory         = 1GB
++AccountingGroup      = "quicktest.$ENV(USER)"
+queue 1
