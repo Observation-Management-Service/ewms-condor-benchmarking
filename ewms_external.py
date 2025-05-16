@@ -11,7 +11,7 @@ from rest_tools.client import SavedDeviceGrantAuth
 LOGGER = logging.getLogger(__name__)
 
 
-async def request_ewms(rc, work_duration_min, work_duration_max, fail_prob):
+async def request_ewms(rc):
     LOGGER.info("Requesting single-task workflow to EWMS...")
     post_body = {
         "public_queue_aliases": ["input-queue", "output-queue"],
@@ -22,7 +22,13 @@ async def request_ewms(rc, work_duration_min, work_duration_max, fail_prob):
                 "out_queue_aliases": ["output-queue"],
                 "task_image": os.environ["TASK_IMAGE"],
                 "task_args": "",
-                "n_workers": int(os.environ["EWMS_MAX_WORKERS"]),
+                "task_env": {
+                    "TASK_RUNTIME": task_runtime,
+                    "FAIL_PROB": fail_prob,
+                    "DO_TASK_RUNTIME_POISSON": do_task_runtime_poisson,
+                    "DO_WORKER_SPEED_FACTOR": do_worker_speed_factor,
+                },
+                "n_workers": ewms_workers,
                 "worker_config": {
                     "condor_requirements": "",
                     "do_transfer_worker_stdouterr": True,
@@ -100,26 +106,22 @@ async def serve_events(n_tasks, in_queue, out_queue):
     print(f"done: {start=} {end=} ({end - start})")
 
 
-async def main(n_tasks, work_duration_min, work_duration_max, fail_prob):
+async def main():
+
+    # cl args
+
     rc = SavedDeviceGrantAuth(
-        args.ewms_url,
+        "https://ewms-dev.icecube.aq",
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
-        filename=str(Path(f"~/ewms-device-refresh-token").expanduser().resolve()),
-        client_id=f"{prefix}-public",  # ex: ewms-prod-public
+        filename=str(Path(f"~/ewms-dev-device-refresh-token").expanduser().resolve()),
+        client_id="ewms-dev-public",  # ex: ewms-prod-public
         retries=0,
     )
 
-    workflow_id, in_mqid, out_mqid = await request_ewms(rc, work_duration_min, work_duration_max, fail_prob)
+    workflow_id, in_mqid, out_mqid = await request_ewms(rc)
     in_queue, out_queue = await get_queues(rc, workflow_id, in_mqid, out_mqid)
     await serve_events(n_tasks, in_queue, out_queue)
 
 
 if __name__ == "__main__":
-    asyncio.run(
-        main(
-            int(os.environ["N_TASKS_IN_BUNDLE"]),
-            float(os.environ["WORK_DURATION_MIN"]),
-            float(os.environ["WORK_DURATION_MAX"]),
-            float(os.environ["FAIL_PROB"]),
-        )
-    )
+    asyncio.run(main())
