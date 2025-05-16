@@ -17,7 +17,7 @@ def get_worker_speed_factor() -> float:
     if not fpath.exists():
         value = 0.0  # TODO: generate # guassian
         with open(fpath, "w") as f:
-            fpath.write_text(str(value))
+            f.write(str(value))
     else:
         with open(fpath) as f:
             value = float(f.read().strip())
@@ -46,6 +46,13 @@ def main(
     do_worker_speed_factor: bool,
 ):
     """Do work (sleep) with a few optional conditions."""
+    print(
+        f"[INFO] task config: "
+        f"{total_work_duration=}s, "
+        f"{fail_prob=}, "
+        f"{do_task_runtime_poisson=}, "
+        f"{do_worker_speed_factor=}"
+    )
 
     if do_task_runtime_poisson:
         total_work_duration = get_task_runtime(total_work_duration)
@@ -54,6 +61,7 @@ def main(
         total_work_duration = int(total_work_duration * get_worker_speed_factor())
 
     # simulate work
+    print(f"[INFO] Starting task with {total_work_duration=}s, ")
     if not fail_prob:
         time.sleep(total_work_duration)
     else:
