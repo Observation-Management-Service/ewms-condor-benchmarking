@@ -1,27 +1,31 @@
 #!/usr/bin/env python3
-"""Build a DAG file."""
+"""Build DAG files."""
 
 import argparse
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 
 
-def get_fname(num_jobs: int, test_vars: dict[str, Any]) -> str:
+@dataclass
+class TestVars:
+    TASK_RUNTIME: int
+    FAIL_PROB: float
+    DO_TASK_RUNTIME_POISSON: str
+    DO_WORKER_SPEED_FACTOR: str
+
+
+def get_fname(num_jobs: int, test_vars: TestVars) -> str:
     """Assemble a file name from test_vars."""
     fname = f"ewms-sim-{num_jobs}"
 
-    for k, v in sorted(test_vars.items()):
+    for k, v in asdict(test_vars).items():
         first_letters = "".join(word[0] for word in k.split("_"))
         fname = f"{fname}_{first_letters}_{v}"
 
     return f"{fname}.dag"
 
 
-def write_dag_file(
-    output_dir: Path,
-    num_jobs: int,
-    test_vars: dict[str, Any],
-):
+def write_dag_file(output_dir: Path, num_jobs: int, test_vars: TestVars):
     """Write the file."""
     n_digits = len(str(num_jobs))  # Auto-calculate padding width
 
@@ -39,7 +43,7 @@ def write_dag_file(
         f.write("\n")
 
         # Shared DEFAULT vars
-        for key, value in test_vars.items():
+        for key, value in asdict(test_vars).items():
             f.write(f'DEFAULT {key}="{value}"\n')
         f.write("\n")
 
@@ -50,7 +54,7 @@ def write_dag_file(
 def main() -> None:
     """Main."""
     parser = argparse.ArgumentParser(
-        description="Generate a DAG file for EWMS simulation jobs."
+        description="Generate DAG fileS for EWMS simulation tests."
     )
     parser.add_argument(
         "-n",
@@ -66,15 +70,19 @@ def main() -> None:
         help="Output DAG file name",
     )
 
-    test_vars = {
-        "TASK_RUNTIME": 60,
-        "FAIL_PROB": 0.0,
-        "DO_TASK_RUNTIME_POISSON": "yes",
-        "DO_WORKER_SPEED_FACTOR": "yes",
-    }
-
     args = parser.parse_args()
-    write_dag_file(args.output_dir, args.num_jobs, test_vars)
+
+    all_tests = [
+        TestVars(
+            TASK_RUNTIME=60,
+            FAIL_PROB=0.0,
+            DO_TASK_RUNTIME_POISSON="no",
+            DO_WORKER_SPEED_FACTOR="no",
+        ),
+        ...,  # TODO
+    ]
+    for test_vars in all_tests:
+        write_dag_file(args.output_dir, args.num_jobs, test_vars)
 
 
 if __name__ == "__main__":
