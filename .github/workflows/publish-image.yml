@@ -17,9 +17,9 @@ on:
       - '**'
 
 env:
-  IMAGE: ghcr.io/icecube/skymap_scanner
-  CVMFS_DEST_DIR: realtime
-  FREE_DISK_SPACE: true
+  IMAGE: ghcr.io/observation-management-service/ewms-condor-benchmarking
+  CVMFS_DEST_DIR: ewms
+  FREE_DISK_SPACE: false
   DEFAULT_PLATFORM: linux/amd64  # matches 'workflow_dispatch.inputs.platform.default' above
 
 jobs:
