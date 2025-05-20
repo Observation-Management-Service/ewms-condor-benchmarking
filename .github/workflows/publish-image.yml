@@ -20,7 +20,7 @@ env:
   IMAGE: ghcr.io/icecube/skymap_scanner
   CVMFS_DEST_DIR: realtime
   FREE_DISK_SPACE: true
-  DEFAULT_PLATFORM: linux/amd64
+  DEFAULT_PLATFORM: linux/amd64  # matches 'workflow_dispatch.inputs.platform.default' above
 
 jobs:
 
