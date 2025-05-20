@@ -5,6 +5,8 @@ import argparse
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+TOTAL_TASKS = 200_000
+
 
 @dataclass
 class TestVars:
@@ -29,6 +31,9 @@ def write_dag_file(output_dir: Path, num_jobs: int, test_vars: TestVars):
     """Write the file."""
     n_digits = len(str(num_jobs))  # Auto-calculate padding width
 
+    if TOTAL_TASKS % num_jobs:
+        raise ValueError(f"Number of tasks {num_jobs} must be divisible by {num_jobs}")
+
     # figure filepath
     fpath = output_dir / get_fname(num_jobs, test_vars)
     if fpath.exists():
@@ -45,6 +50,8 @@ def write_dag_file(output_dir: Path, num_jobs: int, test_vars: TestVars):
         # Shared DEFAULT vars
         for key, value in asdict(test_vars).items():
             f.write(f'DEFAULT {key}="{value}"\n')
+
+        f.write(f'DEFAULT N_TASKS="{int(TOTAL_TASKS/num_jobs)}"\n')
         f.write("\n")
 
         # Retry rule
