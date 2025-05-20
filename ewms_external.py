@@ -96,20 +96,37 @@ async def get_queues(rc, workflow_id, in_mqid, out_mqid):
 
 
 async def serve_events(n_tasks, in_queue, out_queue):
+    """Serve 'n_tasks' number of events (tasks) and wait to receive all return events."""
     start = time.time()
 
-    # pub
-    async with in_queue.open_pub() as pub:
-        for i in range(n_tasks):
-            await pub.send({"n": i})
-            print(f"Sent: #{i}")
+    inflight: list[int] = []
 
-    # sub
-    async with out_queue.open_sub() as sub:
-        i = 0
-        async for msg in sub:
-            i += 1
-            print(f"Received: {i}")
+    # 1st: pub -- include the "n" integer so later we can track it
+    async with in_queue.open_pub() as pub:
+        for n in range(n_tasks):
+            await pub.send({"n": n})
+            inflight.append(n)
+            print(f"Sent: #{n}")
+
+    # 2nd: sub
+    async def sub_time():
+        # receive all the we can -- there should be 1+ return messages (same "n")
+        async with out_queue.open_sub() as sub:
+            ct = -1
+            async for msg in sub:
+                ct += 1
+                print(f"Received: #{ct} ({msg})")
+                try:
+                    inflight.remove(msg["n"])
+                except ValueError:
+                    print(
+                        "ok: received duplicate (ewms does not guarantee deliver-once)"
+                    )
+                if not inflight:
+                    print(f"RECEIVED ALL EXPECTED MESSAGES")
+                    return
+
+    await sub_time()
 
     # done
     end = time.time()
