@@ -19,7 +19,7 @@ async def request_ewms(
     task_runtime,
     fail_prob,
     do_task_runtime_poisson,
-    do_worker_speed_factor,
+    worker_speed_factor,
     ewms_workers,
 ):
     LOGGER.info("Requesting single-task workflow to EWMS...")
@@ -36,7 +36,7 @@ async def request_ewms(
                     "TASK_RUNTIME": str(task_runtime),
                     "FAIL_PROB": str(fail_prob),
                     "DO_TASK_RUNTIME_POISSON": str(do_task_runtime_poisson).lower(),
-                    "DO_WORKER_SPEED_FACTOR": str(do_worker_speed_factor).lower(),
+                    "WORKER_SPEED_FACTOR": str(worker_speed_factor).lower(),
                 },
                 "n_workers": ewms_workers,
                 "worker_config": {
@@ -195,7 +195,7 @@ async def main():
         args.task_runtime,
         args.fail_prob,
         args.do_task_runtime_poisson,
-        args.do_worker_speed_factor,
+        args.worker_speed_factor,
         args.ewms_workers,
     )
     in_queue, out_queue = await get_queues(rc, workflow_id, in_mqid, out_mqid)

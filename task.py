@@ -14,8 +14,11 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
 
 
-def get_worker_speed_factor() -> float:
+def get_worker_speed_factor(worker_speed_factor: tuple[float, float]) -> float:
     """Get the speed factor unique to the worker (used by all tasks on worker)."""
+    high = min(worker_speed_factor)
+    low = max(worker_speed_factor)
+
     _dir = Path(os.getenv("EWMS_TASK_DATA_HUB_DIR", "/commondir"))
     if not _dir.exists():
         LOGGER.warning(f"'{_dir}' does not exist -- will mkdir")
@@ -23,8 +26,17 @@ def get_worker_speed_factor() -> float:
 
     fpath = _dir / "worker-speed-factor.txt"
     if not fpath.exists():
-        # Gaussian draw from N(1.5, 0.5), clipped to [1.0, 3.0]
-        value = float(np.clip(np.random.normal(loc=1.5, scale=0.5), 1.0, 3.0))
+        # Gaussian (clipped)
+        value = float(
+            np.clip(  # ensures value stays in [low, high]
+                np.random.normal(  # draw from normal distribution
+                    loc=np.mean([high, low]),  # centered between low and high
+                    scale=(high - low) / 4,  # stddev; 95% of values will fall in range
+                ),
+                low,  # min bound
+                high,  # max bound
+            )
+        )
         LOGGER.info(f"'{fpath}' did not exist, so writing the value '{value}' to it")
         fpath.write_text(str(value))
     else:
@@ -52,7 +64,7 @@ def main(
     total_work_duration: int,
     fail_prob: float,
     do_task_runtime_poisson: bool,
-    do_worker_speed_factor: bool,
+    worker_speed_factor: tuple[float, float] | None,
 ):
     """Do work (sleep) with a few optional conditions."""
     LOGGER.info(
@@ -60,14 +72,16 @@ def main(
         f"{total_work_duration=}s, "
         f"{fail_prob=}, "
         f"{do_task_runtime_poisson=}, "
-        f"{do_worker_speed_factor=}"
+        f"{worker_speed_factor=}"
     )
 
     if do_task_runtime_poisson:
         total_work_duration = get_task_runtime(total_work_duration)
 
-    if do_worker_speed_factor:
-        total_work_duration = int(total_work_duration * get_worker_speed_factor())
+    if worker_speed_factor:
+        total_work_duration = int(
+            total_work_duration * get_worker_speed_factor(worker_speed_factor)
+        )
 
     # simulate work
     LOGGER.info(f"Starting task with {total_work_duration:.1f}s duration")
@@ -96,6 +110,10 @@ if __name__ == "__main__":
         int(os.environ["TASK_RUNTIME"]),
         float(os.environ["FAIL_PROB"]),
         os.environ["DO_TASK_RUNTIME_POISSON"].lower() in ("1", "true", "t", "yes"),
-        os.environ["DO_WORKER_SPEED_FACTOR"].lower() in ("1", "true", "t", "yes"),
+        (
+            tuple(float(x) for x in os.environ["WORKER_SPEED_FACTOR"].split(","))
+            if os.environ["WORKER_SPEED_FACTOR"].upper() != "NONE"
+            else None
+        ),
     )
     LOGGER.info("Done.")

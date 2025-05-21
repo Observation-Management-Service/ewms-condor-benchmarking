@@ -6,7 +6,7 @@ import sys
 
 def main():
     """Sequentially spawn tasks with Apptainer."""
-    n_tasks = int(os.environ["N_TASKS"])
+    n_tasks = int(os.environ["TASKS_PER_JOB"])
 
     for i in range(n_tasks):
         print(f"\n--- Launching task {i + 1}/{n_tasks} ---")
@@ -22,7 +22,7 @@ def main():
                     f"--env TASK_RUNTIME={os.environ['TASK_RUNTIME']} "
                     f"--env FAIL_PROB={os.environ['FAIL_PROB']} "
                     f"--env DO_TASK_RUNTIME_POISSON={os.environ['DO_TASK_RUNTIME_POISSON']} "
-                    f"--env DO_WORKER_SPEED_FACTOR={os.environ['DO_WORKER_SPEED_FACTOR']} "
+                    f"--env WORKER_SPEED_FACTOR={os.environ['WORKER_SPEED_FACTOR']} "
                     #
                     f"{os.environ['TASK_IMAGE']} "
                     # no args
