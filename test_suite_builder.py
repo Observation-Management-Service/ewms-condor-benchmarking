@@ -59,19 +59,27 @@ class TestVars:
 
 
 def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
-    """Assemble a file name from test_vars."""
-    middle = ""
+    """Assemble a fixed-width, visually aligned filename from vars."""
+    middle_parts = []
+
     for key, val in vars.items():
-        first_letters = "".join(word[0] for word in key.split("_"))
-        if isinstance(val, tuple | list):
+        first_letters = "".join(word[0] for word in key.split("_")).upper()
+
+        # Convert value to str, handling list/tuple specially
+        if isinstance(val, (tuple, list)):
             str_val = "_".join(str(x) for x in val)
         else:
             str_val = str(val)
-        str_val = str_val.replace(".", "")  # this should not obscure much
-        middle = f"{middle}_{first_letters}_{str_val}"
-    middle.lstrip("_")
 
-    return f"{prefix}{middle}{suffix}"
+        # Normalize value
+        str_val = str_val.replace(".", "")
+        str_val = str_val.lower()
+
+        # Pad the abbrev and value to fixed widths
+        middle_parts.append(f"{first_letters:<4}_{str_val:<8}")
+
+    middle_string = "_".join(middle_parts).rstrip("_")
+    return f"{prefix}_{middle_string}{suffix}"
 
 
 class DAGBuilder:
