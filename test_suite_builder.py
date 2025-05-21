@@ -20,6 +20,11 @@ SCRATCH_DIR = Path(
     )
 )
 
+# fmt: off
+CLASSICAL_PREFIX = "classical_sim"
+EWMS_PREFIX      = "ewms_workflow"  # same length so filepaths look good
+# fmt: on
+
 EWMS_N_WORKERS = 2_000
 
 MAX_WORKER_RUNTIME = 60 * 60
@@ -90,7 +95,7 @@ class DAGBuilder:
         """Write the file."""
 
         # figure filepath
-        fpath = output_dir / get_fname("classical", asdict(test_vars), ".dag")
+        fpath = output_dir / get_fname(CLASSICAL_PREFIX, asdict(test_vars), ".dag")
         if fpath.exists():
             raise FileExistsError(f"{fpath} already exists")
 
@@ -119,7 +124,7 @@ class DAGBuilder:
         test_vars_names = [x.name for x in fields(TestVars)]
 
         log_fname = get_fname(
-            "classical",
+            CLASSICAL_PREFIX,
             {v: f"$({v})" for v in test_vars_names},
             "$(clusterid).log",
         )
@@ -180,7 +185,7 @@ class EWMSRequestBuilder:
         """Write a JSON file used for requesting an ewms workflow."""
 
         # figure filepath
-        fpath = output_dir / get_fname("ewms", asdict(test_vars), ".json")
+        fpath = output_dir / get_fname(EWMS_PREFIX, asdict(test_vars), ".json")
         if fpath.exists():
             raise FileExistsError(f"{fpath} already exists")
 
