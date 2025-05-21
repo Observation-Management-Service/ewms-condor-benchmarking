@@ -118,8 +118,12 @@ request_memory             = {WORKER_MEMORY}
 request_disk               = {WORKER_DISK}
 
 priority                   = {PRIORITY}
-+WantIOProxy               = true  # for HTChirp (ewms)
-+OriginalTime              = 3600  # Execution time limit -- 1 hour default on OSG
+
+# for HTChirp (ewms does this)
++WantIOProxy               = true
+
+# execution time limit -- 1 hour default on OSG
++OriginalTime              = {MAX_WORKER_RUNTIME}  
 
 # pass in all DAG-defined vars as environment
 environment = "{" ".join(f'{v}=$({v})' for v in env_vars)}" 
