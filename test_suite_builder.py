@@ -20,6 +20,23 @@ PRIORITY = 100
 WORKER_DISK = "1GB"
 WORKER_MEMORY = "512M"
 
+# copied from https://github.com/Observation-Management-Service/ewms-task-management-service/blob/v1.0.10/tests/unit/test_starter.py#L53
+REQUIREMENTS_EWMS_SETS = (
+    "ifthenelse(!isUndefined(HAS_SINGULARITY), HAS_SINGULARITY, HasSingularity) && "
+    "HAS_CVMFS_icecube_opensciencegrid_org && "
+    # "has_avx && has_avx2 && "
+    '(OSG_OS_VERSION =?= "8" || OSG_OS_VERSION =?= "9") && '
+    "SingularityUserNamespaces =?= true && "
+    'GLIDEIN_Site =!= "AMNH" && '
+    'GLIDEIN_Site =!= "Kansas State University" && '
+    'GLIDEIN_Site =!= "NotreDame" && '
+    'GLIDEIN_Site =!= "Rhodes-HPC" && '
+    'GLIDEIN_Site =!= "SDSC-PRP" && '
+    'GLIDEIN_Site =!= "SU-ITS" && '
+    'GLIDEIN_Site =!= "San Diego Supercomputer Center" && '
+    'OSG_SITE_NAME =!= "Wichita State University" '  # &&
+)
+
 
 @dataclass
 class TestVars:
@@ -86,7 +103,7 @@ universe                   = container
 container_image            = {task_image}
 
 # must support same reqs as ewms in order to compare scheduling
-Requirements               = all_reqs_str
+Requirements               = {REQUIREMENTS_EWMS_SETS}
 
 +FileSystemDomain          = "blah"  # must be quoted 
 
@@ -145,7 +162,7 @@ class EWMSRequestBuilder:
                     },
                     "n_workers": EWMS_N_WORKERS,
                     "worker_config": {
-                        "condor_requirements": "",
+                        "condor_requirements": "",  # no extra needs since ewms sets several already
                         "do_transfer_worker_stdouterr": False,  # same as .submit file
                         "max_worker_runtime": MAX_WORKER_RUNTIME,
                         "n_cores": N_CORES,
