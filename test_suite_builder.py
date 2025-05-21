@@ -112,7 +112,10 @@ class DAGBuilder:
         contents = f"""
 universe                   = container
 +should_transfer_container = no
+# we're using the same image for both the job and the task -- simple
 container_image            = {task_image}
+# override the container's default CMD (see dockerfile) 
+arguments                  = python classical_job.py
 
 # must support same reqs as ewms in order to compare scheduling
 Requirements               = {REQUIREMENTS_EWMS_SETS}
@@ -214,8 +217,10 @@ def main() -> None:
         required=True,
         help="File path to the apptainer image used for each task",
     )
-
     args = parser.parse_args()
+
+    if not args.task_image.exists():
+        raise FileNotFoundError(args.task_image)
 
     # prep SCRATCH_DIR
     if SCRATCH_DIR.exists():
