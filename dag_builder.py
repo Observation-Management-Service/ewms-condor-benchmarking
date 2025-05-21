@@ -18,9 +18,9 @@ class TestVars:
     WORKER_SPEED_FACTOR: tuple[float, float] | None = None
 
 
-def get_fname(num_jobs: int, test_vars: TestVars) -> str:
+def get_fname(test_vars: TestVars) -> str:
     """Assemble a file name from test_vars."""
-    fname = f"ewms-sim-{num_jobs}"
+    fname = f"ewms_sim"
 
     for k, v in asdict(test_vars).items():
         first_letters = "".join(word[0] for word in k.split("_"))
@@ -34,7 +34,7 @@ def write_dag_file(output_dir: Path, test_vars: TestVars):
     n_digits = len(str(test_vars.N_JOBS))  # Auto-calculate padding width
 
     # figure filepath
-    fpath = output_dir / get_fname(test_vars.N_JOBS, test_vars)
+    fpath = output_dir / get_fname(test_vars)
     if fpath.exists():
         raise FileExistsError(f"{fpath} already exists")
 
@@ -66,32 +66,32 @@ def main() -> None:
         "--n-tasks",
         type=int,
         default=200_000,  # 200k
-        help="Number of tasks to generate",
+        help="Total number of tasks to generate",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
         required=True,
-        help="Output DAG file name",
+        help="Directory to put DAG files",
     )
 
     args = parser.parse_args()
 
     # prep tests
     all_tests = []
-    for tpj in [1, 100]:
-        if args.n_tasks % tpj:
+    for tasks_per_job in [1, 100]:
+        if args.n_tasks % tasks_per_job:
             raise ValueError(
-                f"Total number of tasks {args.n_tasks} must be divisible by {tpj}"
+                f"Total number of tasks {args.n_tasks} must be divisible by {tasks_per_job}"
             )
-        n_jobs = args.n_tasks / tpj
+        n_jobs = args.n_tasks / tasks_per_job
         all_tests.extend(
             [
                 # fmt: off
-                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tpj),
-                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tpj, FAIL_PROB=0.01),
-                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tpj, DO_TASK_RUNTIME_POISSON="yes"),
-                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tpj, WORKER_SPEED_FACTOR=(1.0, 5.0)),
+                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job),
+                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job, FAIL_PROB=0.01),
+                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job, DO_TASK_RUNTIME_POISSON="yes"),
+                TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job, WORKER_SPEED_FACTOR=(1.0, 5.0)),
                 # fmt: on
             ],
         )
