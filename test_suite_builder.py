@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build test submission files -- ewms and condor."""
+"""Build test submission files -- ewms and condor (dagman)."""
 
 import argparse
 import json
@@ -76,14 +76,14 @@ class DAGBuilder:
         return fpath
 
     @staticmethod
-    def write_submit_file(output_dir: Path) -> None:
+    def write_submit_file(output_dir: Path, task_image: Path) -> None:
         """Write a condor submit file."""
         env_vars = [x for x in fields(TestVars) if x not in ["N_JOBS"]]
 
         contents = f"""
 universe                   = container
 +should_transfer_container = no
-container_image            = /cvmfs/...
+container_image            = {task_image}
 
 # must support same reqs as ewms in order to compare scheduling
 Requirements               = all_reqs_str
@@ -117,7 +117,11 @@ class EWMSRequestBuilder:
     """For building the EWMS things."""
 
     @staticmethod
-    def write_request_json(output_dir: Path, test_vars: TestVars) -> Path:
+    def write_request_json(
+        output_dir: Path,
+        test_vars: TestVars,
+        task_image: Path,
+    ) -> Path:
         """Write a JSON file used for requesting an ewms workflow."""
 
         # figure filepath
@@ -172,14 +176,21 @@ def main() -> None:
     )
     parser.add_argument(
         "--output-dir",
-        type=str,
+        type=Path,
         required=True,
-        help="Directory to put DAG files",
+        help="Directory to put submission files",
+    )
+    parser.add_argument(
+        "--task-image",
+        type=Path,
+        required=True,
+        help="File path to the apptainer image used for each task",
     )
 
     args = parser.parse_args()
 
-    DAGBuilder.write_submit_file(args.output_dir)
+    # all dags share same submit file
+    DAGBuilder.write_submit_file(args.output_dir, args.task_image)
 
     # prep tests
     for tasks_per_job in [1, 100, "ewms"]:
@@ -194,7 +205,10 @@ def main() -> None:
         # ewms
         if tasks_per_job == "ewms":
             for tv in test_vars:
-                EWMSRequestBuilder.write_request_json(args.output_dir, tv)
+                fpath = EWMSRequestBuilder.write_request_json(
+                    args.output_dir, tv, args.task_image
+                )
+                LOGGER.info(f"generated {fpath=}")
         # classical condor/dagman
         else:
             if args.n_tasks % tasks_per_job:
@@ -204,8 +218,10 @@ def main() -> None:
             n_jobs = int(args.n_tasks / tasks_per_job)
             # write dags
             for tv in test_vars:
-                DAGBuilder.write_dag_file(args.output_dir, tv, n_jobs)
+                fpath = DAGBuilder.write_dag_file(args.output_dir, tv, n_jobs)
+                LOGGER.info(f"generated {fpath=}")
 
 
 if __name__ == "__main__":
     main()
+    LOGGER.info("Done.")
