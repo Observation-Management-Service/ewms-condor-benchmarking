@@ -6,11 +6,14 @@ import json
 import logging
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-
+from typing import Any
 
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
 
 SUBMIT_FNAME = "ewms-sim.submit"
+
+SCRATCH_DIR = Path("/scratch/eevans/ewms-benchmarking")
 
 EWMS_N_WORKERS = 2_000
 
@@ -50,15 +53,15 @@ class TestVars:
     WORKER_SPEED_FACTOR: tuple[float, float] | None = None
 
 
-def get_fname(prefix: str, test_vars: TestVars, ext: str) -> str:
+def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
     """Assemble a file name from test_vars."""
-    fname = f"{prefix}"
-
-    for k, v in asdict(test_vars).items():
+    middle = ""
+    for k, v in vars.items():
         first_letters = "".join(word[0] for word in k.split("_"))
-        fname = f"{fname}_{first_letters}_{v}"
+        middle = f"{middle}_{first_letters}_{v}"
+    middle.lstrip("_")
 
-    return f"{fname}.{ext.lstrip(".")}"
+    return f"{prefix}{middle}{suffix}"
 
 
 class DAGBuilder:
@@ -69,7 +72,7 @@ class DAGBuilder:
         """Write the file."""
 
         # figure filepath
-        fpath = output_dir / get_fname("ewms_sim_classical", test_vars, ".dag")
+        fpath = output_dir / get_fname("classical", asdict(test_vars), ".dag")
         if fpath.exists():
             raise FileExistsError(f"{fpath} already exists")
 
@@ -95,7 +98,13 @@ class DAGBuilder:
     @staticmethod
     def write_submit_file(output_dir: Path, task_image: Path) -> None:
         """Write a condor submit file."""
-        env_vars = [x.name for x in fields(TestVars)]
+        test_vars_names = [x.name for x in fields(TestVars)]
+
+        log_fname = get_fname(
+            "classical",
+            {v: f"$({v})" for v in test_vars_names},
+            "$(clusterid).log",
+        )
 
         contents = f"""
 universe                   = container
@@ -105,9 +114,10 @@ container_image            = {task_image}
 # must support same reqs as ewms in order to compare scheduling
 Requirements               = {REQUIREMENTS_EWMS_SETS}
 
-+FileSystemDomain          = "blah"  # must be quoted 
+# must be quoted
++FileSystemDomain          = "blah" 
 
-log                        = /scratch/.../$(clusterid).log
+log                        = {SCRATCH_DIR / log_fname}
 
 should_transfer_files      = YES
 when_to_transfer_output    = ON_EXIT_OR_EVICT
@@ -126,7 +136,7 @@ priority                   = {PRIORITY}
 +OriginalTime              = {MAX_WORKER_RUNTIME}  
 
 # pass in all DAG-defined vars as environment
-environment = "{" ".join(f'{v}=$({v})' for v in env_vars)}" 
+environment = "{" ".join(f'{v}=$({v})' for v in test_vars_names)}" 
 
 queue 1
         """
@@ -146,7 +156,7 @@ class EWMSRequestBuilder:
         """Write a JSON file used for requesting an ewms workflow."""
 
         # figure filepath
-        fpath = output_dir / get_fname("ewms_workflow", test_vars, ".json")
+        fpath = output_dir / get_fname("ewms", asdict(test_vars), ".json")
         if fpath.exists():
             raise FileExistsError(f"{fpath} already exists")
 
@@ -196,12 +206,6 @@ def main() -> None:
         help="Total number of tasks to generate",
     )
     parser.add_argument(
-        "--output-dir",
-        type=Path,
-        required=True,
-        help="Directory to put submission files",
-    )
-    parser.add_argument(
         "--task-image",
         type=Path,
         required=True,
@@ -210,8 +214,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # prep SCRATCH_DIR
+    if SCRATCH_DIR.exists():
+        raise FileExistsError(SCRATCH_DIR)
+    SCRATCH_DIR.mkdir(exist_ok=True)
+
     # all dags share same submit file
-    DAGBuilder.write_submit_file(args.output_dir, args.task_image)
+    DAGBuilder.write_submit_file(SCRATCH_DIR, args.task_image)
 
     # prep tests
     for tasks_per_job in [1, 100, "ewms"]:
@@ -227,7 +236,7 @@ def main() -> None:
         if tasks_per_job == "ewms":
             for tv in test_vars:
                 fpath = EWMSRequestBuilder.write_request_json(
-                    args.output_dir, tv, args.task_image
+                    SCRATCH_DIR, tv, args.task_image
                 )
                 LOGGER.info(f"generated {fpath=}")
         # classical condor/dagman
@@ -239,8 +248,13 @@ def main() -> None:
             n_jobs = int(args.n_tasks / tasks_per_job)
             # write dags
             for tv in test_vars:
-                fpath = DAGBuilder.write_dag_file(args.output_dir, tv, n_jobs)
+                fpath = DAGBuilder.write_dag_file(SCRATCH_DIR, tv, n_jobs)
                 LOGGER.info(f"generated {fpath=}")
+
+    # "ls" SCRATCH_DIR
+    LOGGER.info(f"ls {SCRATCH_DIR}")
+    for f in SCRATCH_DIR.iterdir():
+        LOGGER.info(f)
 
 
 if __name__ == "__main__":
