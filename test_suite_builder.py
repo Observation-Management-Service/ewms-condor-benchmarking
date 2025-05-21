@@ -66,7 +66,7 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
         if isinstance(v, tuple | list):
             str_v = "_".join(v)
         else:
-            str_v = v
+            str_v = str(v)
         str_v = str_v.replace(".", "")  # this should not obscure much
         middle = f"{middle}_{first_letters}_{str_v}"
     middle.lstrip("_")
