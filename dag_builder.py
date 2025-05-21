@@ -2,8 +2,10 @@
 """Build DAG files."""
 
 import argparse
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
+
+SUBMIT_FNAME = "ewms-sim.submit"
 
 
 @dataclass
@@ -42,7 +44,7 @@ def write_dag_file(output_dir: Path, test_vars: TestVars):
     with open(fpath, "w") as f:
         # Write JOB lines with auto-zero-padding
         for i in range(1, test_vars.N_JOBS + 1):
-            f.write(f"JOB {i:0{n_digits}d} ewms-sim.sub\n")
+            f.write(f"JOB {i:0{n_digits}d} {output_dir/SUBMIT_FNAME}\n")
 
         f.write("\n")
 
@@ -55,6 +57,45 @@ def write_dag_file(output_dir: Path, test_vars: TestVars):
 
         # Retry rule
         f.write("RETRY ALL_NODES 5 UNLESS-EXIT 0\n")
+
+
+def write_submit_file(output_dir: Path) -> None:
+    """Write a condor submit file."""
+    env_vars = [x for x in fields(TestVars) if x not in ["N_JOBS"]]
+
+    contents = f"""
+universe                   = container
++should_transfer_container = no
+container_image            = /cvmfs/...
+
+# must support same reqs as ewms in order to compare scheduling
+Requirements               = all_reqs_str
+
++FileSystemDomain          = "blah"  # must be quoted 
+
+log                        = /scratch/.../$(clusterid).log
+output                     = /scratch/.../$(clusterid)/$(ProcId).out
+error                      = /scratch/.../$(clusterid)/$(ProcId).err
+
+should_transfer_files      = YES
+when_to_transfer_output    = ON_EXIT_OR_EVICT
+transfer_executable        = false
+
+request_cpus               = 1
+request_memory             = 1GB
+request_disk               = 1GB
+
+priority                   = 10
++WantIOProxy               = true  # for HTChirp (ewms)
++OriginalTime              = 3600  # Execution time limit -- 1 hour default on OSG
+
+# pass in all DAG-defined vars as environment
+environment = "{" ".join(f'{v}=$({v})' for v in env_vars)}" 
+
+queue 1
+    """
+    with open(output_dir / SUBMIT_FNAME, "w") as f:
+        f.write(contents)
 
 
 def main() -> None:
