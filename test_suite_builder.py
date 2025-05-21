@@ -95,7 +95,7 @@ class DAGBuilder:
     @staticmethod
     def write_submit_file(output_dir: Path, task_image: Path) -> None:
         """Write a condor submit file."""
-        env_vars = [x for x in fields(TestVars) if x not in ["N_JOBS"]]
+        env_vars = [x.name for x in fields(TestVars)]
 
         contents = f"""
 universe                   = container
