@@ -228,8 +228,8 @@ def main() -> None:
         raise FileNotFoundError(args.task_image)
 
     # prep SCRATCH_DIR
-    if SCRATCH_DIR.exists():
-        raise FileExistsError(SCRATCH_DIR)
+    if not SCRATCH_DIR.is_dir() or list(SCRATCH_DIR.iterdir()):
+        raise RuntimeError(f"{SCRATCH_DIR=} must be an empty directory")
     SCRATCH_DIR.mkdir(exist_ok=True)
 
     # all dags share same submit file
