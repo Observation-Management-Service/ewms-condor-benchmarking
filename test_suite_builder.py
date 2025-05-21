@@ -178,7 +178,7 @@ class EWMSRequestBuilder:
                     "cluster_locations": ["sub-2"],
                     "in_queue_aliases": ["input-queue"],
                     "out_queue_aliases": ["output-queue"],
-                    "task_image": task_image,
+                    "task_image": str(task_image),
                     "task_args": "",
                     "task_env": {
                         k: str(v).lower()
