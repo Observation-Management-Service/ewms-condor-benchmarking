@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Build test submission files -- ewms and condor (dagman)."""
 
 import argparse

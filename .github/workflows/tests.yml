@@ -21,4 +21,4 @@ jobs:
           export EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE="$HOME/myscratch"
           mkdir -p $EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE
           
-          ./test_suite_builder.py --n-tasks 2000 --task-image $task_image
+          python ./test_suite_builder.py --n-tasks 2000 --task-image $task_image

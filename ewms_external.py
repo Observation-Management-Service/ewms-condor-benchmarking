@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """The external task-requesting & event-serving script for an ewms workflow."""
 
 import argparse

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """A simulated task with some knobs."""
 
 import logging

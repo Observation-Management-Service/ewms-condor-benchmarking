@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 """A classical condor job that runs simulated tasks sequentially."""
+
 import os
 import subprocess
 import sys
