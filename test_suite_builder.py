@@ -63,7 +63,12 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
     middle = ""
     for k, v in vars.items():
         first_letters = "".join(word[0] for word in k.split("_"))
-        middle = f"{middle}_{first_letters}_{v}"
+        if isinstance(v, tuple | list):
+            str_v = "_".join(v)
+        else:
+            str_v = v
+        str_v = str_v.replace(".", "")  # this should not obscure much
+        middle = f"{middle}_{first_letters}_{str_v}"
     middle.lstrip("_")
 
     return f"{prefix}{middle}{suffix}"
@@ -251,7 +256,7 @@ def main() -> None:
                 fpath = EWMSRequestBuilder.write_request_json(
                     SCRATCH_DIR, tv, args.task_image
                 )
-                LOGGER.info(f"generated {fpath=}")
+                LOGGER.info(f"generated {str(fpath)}")
         # classical condor/dagman
         else:
             if args.n_tasks % tasks_per_job:
@@ -262,7 +267,7 @@ def main() -> None:
             # write dags
             for tv in test_vars:
                 fpath = DAGBuilder.write_dag_file(SCRATCH_DIR, tv, n_jobs)
-                LOGGER.info(f"generated {fpath=}")
+                LOGGER.info(f"generated {str(fpath)}")
 
     # "ls" SCRATCH_DIR
     LOGGER.info(f"ls {SCRATCH_DIR}")
