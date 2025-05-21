@@ -109,10 +109,10 @@ if __name__ == "__main__":
     main(
         int(os.environ["TASK_RUNTIME"]),
         float(os.environ["FAIL_PROB"]),
-        os.environ["DO_TASK_RUNTIME_POISSON"].lower() in ("1", "true", "t", "yes"),
+        os.environ["DO_TASK_RUNTIME_POISSON"].lower() in ("1", "true", "t", "yes", "y"),
         (
             tuple(float(x) for x in os.environ["WORKER_SPEED_FACTOR"].split(","))
-            if os.environ["WORKER_SPEED_FACTOR"].upper() != "NONE"
+            if os.environ["WORKER_SPEED_FACTOR"].lower() != "none"
             else None
         ),
     )

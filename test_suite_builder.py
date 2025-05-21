@@ -106,6 +106,9 @@ class DAGBuilder:
             "$(clusterid).log",
         )
 
+        env_vars = [f"{v}=$({v})" for v in test_vars_names]
+        env_vars.append(f"TASK_IMAGE={task_image}")
+
         contents = f"""
 universe                   = container
 +should_transfer_container = no
@@ -136,7 +139,7 @@ priority                   = {PRIORITY}
 +OriginalTime              = {MAX_WORKER_RUNTIME}  
 
 # pass in all DAG-defined vars as environment
-environment = "{" ".join(f'{v}=$({v})' for v in test_vars_names)}" 
+environment = "{" ".join(env_vars)}" 
 
 queue 1
         """
