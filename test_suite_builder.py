@@ -21,7 +21,7 @@ SCRATCH_DIR = Path(
 )
 
 # fmt: off
-CLASSICAL_PREFIX = "classical_sim"
+CLASSICAL_PREFIX = "classical_dag"
 EWMS_PREFIX      = "ewms_workflow"  # same length so filepaths look good
 # fmt: on
 
