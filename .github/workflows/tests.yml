@@ -1,0 +1,19 @@
+name: tests.yml
+on: push
+
+jobs:
+
+  test_suite_builder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: run script
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          
+          task_image="./foo/here/the:image"
+          mkdir -p $(dirname $task_image) 
+          touch $task_image
+          
+          mkdir -p /scratch/eevans/ewms-benchmarking
+          
+          ./test_suite_builder.py --n-tasks 2000 --task-image $task_image
