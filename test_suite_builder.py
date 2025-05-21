@@ -76,7 +76,7 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
         str_val = str_val.lower()
 
         # Pad the abbrev and value to fixed widths
-        middle_parts.append(f"{first_letters:<4}_{str_val:<8}")
+        middle_parts.append(f"{first_letters}_{str_val:<8}".replace(" ", "_"))
 
     middle_string = "_".join(middle_parts).rstrip("_")
     return f"{prefix}_{middle_string}{suffix}"
