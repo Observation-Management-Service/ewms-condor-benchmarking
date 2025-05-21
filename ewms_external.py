@@ -51,7 +51,7 @@ async def get_queues(
                 f"/v1/mqs/workflows/{workflow_id}/mq-profiles/public",
             )
         )["mqprofiles"]
-    LOGGER.info(f"{mqprofiles=}")
+    LOGGER.info(json.dumps(mqprofiles, indent=4))
 
     in_mqprofile = next(p for p in mqprofiles if p["mqid"] == in_mqid)
     in_queue = Queue(
@@ -84,7 +84,7 @@ async def serve_events(n_tasks: int, in_queue: Queue, out_queue: Queue):
         for n in range(n_tasks):
             await pub.send({"n": n})
             inflight.append(n)
-            print(f"Sent: #{n}")
+            LOGGER.info(f"Sent: #{n}")
 
     # 2nd: sub
     async def sub_time():
@@ -93,22 +93,22 @@ async def serve_events(n_tasks: int, in_queue: Queue, out_queue: Queue):
             ct = -1
             async for msg in sub:
                 ct += 1
-                print(f"Received: #{ct} ({msg})")
+                LOGGER.info(f"Received: #{ct} ({msg})")
                 try:
                     inflight.remove(msg["n"])
                 except ValueError:
-                    print(
+                    LOGGER.info(
                         "ok: received duplicate (ewms does not guarantee deliver-once)"
                     )
                 if not inflight:
-                    print(f"RECEIVED ALL EXPECTED MESSAGES")
+                    LOGGER.info(f"RECEIVED ALL EXPECTED MESSAGES")
                     return
 
     await sub_time()
 
     # done
     end = time.time()
-    print(f"done: {start=} {end=} ({end - start})")
+    LOGGER.info(f"done: {start=} {end=} ({end - start})")
 
 
 async def main():
