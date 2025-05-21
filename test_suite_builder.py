@@ -4,6 +4,7 @@
 import argparse
 import json
 import logging
+import os
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,12 @@ LOGGER.setLevel(logging.DEBUG)
 
 SUBMIT_FNAME = "ewms-sim.submit"
 
-SCRATCH_DIR = Path("/scratch/eevans/ewms-benchmarking")
+SCRATCH_DIR = Path(
+    os.getenv(
+        "EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE",
+        "/scratch/eevans/ewms-benchmarking",
+    )
+)
 
 EWMS_N_WORKERS = 2_000
 

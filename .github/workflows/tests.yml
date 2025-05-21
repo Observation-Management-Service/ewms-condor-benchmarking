@@ -14,6 +14,7 @@ jobs:
           mkdir -p $(dirname $task_image) 
           touch $task_image
           
-          mkdir -p /scratch/eevans/ewms-benchmarking
+          export EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE="$HOME/myscratch"
+          mkdir -p $EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE
           
           ./test_suite_builder.py --n-tasks 2000 --task-image $task_image
