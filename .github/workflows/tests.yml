@@ -24,4 +24,4 @@ jobs:
           python ./test_suite_builder.py --n-tasks 2000 --task-image $task_image
           
           # cats with filename headers
-          more $EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE | cat
+          more $EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE/* | cat
