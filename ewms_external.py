@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""The external task-requesting & event-serving script for an ewms workflow."""
 
 import argparse
 import asyncio
@@ -8,24 +9,22 @@ import time
 from pathlib import Path
 
 from mqclient.queue import Queue
-from rest_tools.client import SavedDeviceGrantAuth
+from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 
-async def request_ewms(
-    rc,
-    task_image,
-    task_runtime,
-    fail_prob,
-    do_task_runtime_poisson,
-    worker_speed_factor,
-    ewms_workers,
-):
-    LOGGER.info("Requesting single-task workflow to EWMS...")
+async def request_ewms(rc: RestClient, ewms_request_json: Path):
+    """Request an ewms workflow from the json file."""
+    LOGGER.info(f"Requesting single-task workflow to EWMS ({ewms_request_json})...")
+
+    with open(ewms_request_json) as f:
+        post_body = json.load(f)
+    LOGGER.debug(json.dumps(post_body, indent=4))
 
     resp = await rc.request("POST", "/v1/workflows", post_body)
-    LOGGER.debug(json.dumps(resp))
+    LOGGER.debug(json.dumps(resp, indent=4))
 
     return (
         resp["workflow"]["workflow_id"],
@@ -34,7 +33,13 @@ async def request_ewms(
     )
 
 
-async def get_queues(rc, workflow_id, in_mqid, out_mqid):
+async def get_queues(
+    rc: RestClient,
+    workflow_id: str,
+    in_mqid: str,
+    out_mqid: str,
+) -> tuple[Queue, Queue]:
+    """Retrieve the queue objects."""
     LOGGER.info("getting queues...")
     mqprofiles: list[dict] = []
     while not (mqprofiles and all(m["is_activated"] for m in mqprofiles)):
@@ -68,7 +73,7 @@ async def get_queues(rc, workflow_id, in_mqid, out_mqid):
     return in_queue, out_queue
 
 
-async def serve_events(n_tasks, in_queue, out_queue):
+async def serve_events(n_tasks: int, in_queue: Queue, out_queue: Queue):
     """Serve 'n_tasks' number of events (tasks) and wait to receive all return events."""
     start = time.time()
 
@@ -112,43 +117,10 @@ async def main():
         description="Submit EWMS task workflow and collect results."
     )
     parser.add_argument(
-        "--task-image",
+        "--request-json",
         required=True,
-        help="Container image to run",
-    )
-    parser.add_argument(
-        "--task-runtime",
-        type=int,
-        required=True,
-        help="Average task runtime (seconds)",
-    )
-    parser.add_argument(
-        "--fail-prob",
-        type=float,
-        required=True,
-        help="Probability of simulated failure (0.0–1.0)",
-    )
-    parser.add_argument(
-        "--do-task-runtime-poisson",
-        action="store_true",
-        help="Use Poisson-distributed task duration",
-    )
-    parser.add_argument(
-        "--do-worker-speed-factor",
-        action="store_true",
-        help="Use per-worker Gaussian speed factor",
-    )
-    parser.add_argument(
-        "--ewms-workers",
-        type=int,
-        required=True,
-        help="Number of EWMS workers to deploy",
-    )
-    parser.add_argument(
-        "--n-tasks",
-        type=int,
-        required=True,
-        help="Number of events to publish",
+        type=Path,
+        help="JSON file containing the ewms workflow request",
     )
 
     args = parser.parse_args()
@@ -162,19 +134,11 @@ async def main():
         retries=0,
     )
 
-    workflow_id, in_mqid, out_mqid = await request_ewms(
-        rc,
-        args.task_image,
-        args.task_runtime,
-        args.fail_prob,
-        args.do_task_runtime_poisson,
-        args.worker_speed_factor,
-        args.ewms_workers,
-    )
+    workflow_id, in_mqid, out_mqid = await request_ewms(rc, args.request_json)
     in_queue, out_queue = await get_queues(rc, workflow_id, in_mqid, out_mqid)
     await serve_events(args.n_tasks, in_queue, out_queue)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
+    LOGGER.info("Done.")
