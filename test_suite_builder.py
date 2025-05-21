@@ -84,7 +84,7 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
         middle_parts.append(f"{first_letters}_{str_val:_<5}")
 
     middle_string = "_".join(middle_parts)
-    return f"{prefix}_{middle_string}{suffix}"
+    return f"{prefix}__{middle_string}{suffix}"
 
 
 class DAGBuilder:
