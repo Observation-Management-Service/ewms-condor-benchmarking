@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 SUBMIT_FNAME = "ewms-sim.submit"
 
