@@ -23,34 +23,7 @@ async def request_ewms(
     ewms_workers,
 ):
     LOGGER.info("Requesting single-task workflow to EWMS...")
-    post_body = {
-        "public_queue_aliases": ["input-queue", "output-queue"],
-        "tasks": [
-            {
-                "cluster_locations": ["sub-2"],
-                "in_queue_aliases": ["input-queue"],
-                "out_queue_aliases": ["output-queue"],
-                "task_image": task_image,
-                "task_args": "",
-                "task_env": {
-                    "TASK_RUNTIME": str(task_runtime),
-                    "FAIL_PROB": str(fail_prob),
-                    "DO_TASK_RUNTIME_POISSON": str(do_task_runtime_poisson).lower(),
-                    "WORKER_SPEED_FACTOR": str(worker_speed_factor).lower(),
-                },
-                "n_workers": ewms_workers,
-                "worker_config": {
-                    "condor_requirements": "",
-                    "do_transfer_worker_stdouterr": True,
-                    "max_worker_runtime": 60 * 60,
-                    "n_cores": 1,
-                    "priority": 100,
-                    "worker_disk": "1GB",
-                    "worker_memory": "512M",
-                },
-            }
-        ],
-    }
+
     resp = await rc.request("POST", "/v1/workflows", post_body)
     LOGGER.debug(json.dumps(resp))
 
