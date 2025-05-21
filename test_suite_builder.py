@@ -61,14 +61,14 @@ class TestVars:
 def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
     """Assemble a file name from test_vars."""
     middle = ""
-    for k, v in vars.items():
-        first_letters = "".join(word[0] for word in k.split("_"))
-        if isinstance(v, tuple | list):
-            str_v = "_".join(v)
+    for key, val in vars.items():
+        first_letters = "".join(word[0] for word in key.split("_"))
+        if isinstance(val, tuple | list):
+            str_val = "_".join(str(x) for x in val)
         else:
-            str_v = str(v)
-        str_v = str_v.replace(".", "")  # this should not obscure much
-        middle = f"{middle}_{first_letters}_{str_v}"
+            str_val = str(val)
+        str_val = str_val.replace(".", "")  # this should not obscure much
+        middle = f"{middle}_{first_letters}_{str_val}"
     middle.lstrip("_")
 
     return f"{prefix}{middle}{suffix}"
