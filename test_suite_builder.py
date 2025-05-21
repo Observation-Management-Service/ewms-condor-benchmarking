@@ -25,8 +25,8 @@ WORKER_MEMORY = "512M"
 class TestVars:
     """Testing parameters."""
 
-    N_JOBS: int
-    TASKS_PER_JOB: int
+    TASKS_PER_JOB: int | str
+
     TASK_RUNTIME: int = 60
     FAIL_PROB: float = 0.0
     DO_TASK_RUNTIME_POISSON: str = "no"
@@ -48,7 +48,7 @@ class DAGBuilder:
     """For building the DAG things."""
 
     @staticmethod
-    def write_dag_file(output_dir: Path, test_vars: TestVars) -> Path:
+    def write_dag_file(output_dir: Path, test_vars: TestVars, n_jobs: int) -> Path:
         """Write the file."""
 
         # figure filepath
@@ -59,16 +59,14 @@ class DAGBuilder:
         # write!
         with open(fpath, "w") as f:
             # Write JOB lines with auto-zero-padding
-            n_digits = len(str(test_vars.N_JOBS))  # Auto-calculate padding width
-            for i in range(1, test_vars.N_JOBS + 1):
+            n_digits = len(str(n_jobs))  # Auto-calculate padding width
+            for i in range(1, n_jobs + 1):
                 f.write(f"JOB {i:0{n_digits}d} {output_dir/SUBMIT_FNAME}\n")
 
             f.write("\n")
 
             # Shared DEFAULT vars
             for key, value in asdict(test_vars).items():
-                if key in ["N_JOBS"]:
-                    continue
                 f.write(f'DEFAULT {key}="{value}"\n')
             f.write("\n")
 
@@ -186,28 +184,27 @@ def main() -> None:
     # prep tests
     for tasks_per_job in [1, 100, "ewms"]:
         LOGGER.info(f"making tests for {tasks_per_job=}")
+        test_vars = [
+            TestVars(TASKS_PER_JOB=tasks_per_job),
+            TestVars(TASKS_PER_JOB=tasks_per_job, FAIL_PROB=0.01),
+            TestVars(TASKS_PER_JOB=tasks_per_job, DO_TASK_RUNTIME_POISSON="yes"),
+            TestVars(TASKS_PER_JOB=tasks_per_job, WORKER_SPEED_FACTOR=(1.0, 5.0)),
+        ]
+
         # ewms
         if tasks_per_job == "ewms":
-            pass
-        # classical condor
+            for tv in test_vars:
+                EWMSRequestBuilder.write_request_json(args.output_dir, tv)
+        # classical condor/dagman
         else:
             if args.n_tasks % tasks_per_job:
                 raise ValueError(
                     f"Total number of tasks {args.n_tasks} must be divisible by {tasks_per_job}"
                 )
+            n_jobs = int(args.n_tasks / tasks_per_job)
             # write dags
-            n_jobs = args.n_tasks / tasks_per_job
-            DAGBuilder.write_dag_file(
-                args.output_dir,
-                [
-                    # fmt: off
-                    TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job),
-                    TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job, FAIL_PROB=0.01),
-                    TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job, DO_TASK_RUNTIME_POISSON="yes"),
-                    TestVars(N_JOBS=n_jobs, TASKS_PER_JOB=tasks_per_job, WORKER_SPEED_FACTOR=(1.0, 5.0)),
-                    # fmt: on
-                ],
-            )
+            for tv in test_vars:
+                DAGBuilder.write_dag_file(args.output_dir, tv, n_jobs)
 
 
 if __name__ == "__main__":
