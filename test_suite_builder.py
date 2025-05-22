@@ -66,7 +66,7 @@ class TestVars:
 
 
 def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
-    """Assemble a fixed-width, visually aligned filename from vars."""
+    """Assemble a filename from vars, with components padded for reasonable good looks."""
     middle_parts = []
 
     for key, val in vars.items():
@@ -79,11 +79,12 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
             str_val = str(val)
 
         # Normalize value
-        str_val = str_val.replace(".", "")
+        if str_val.startswith("0."):
+            str_val = str_val.removeprefix("0.") + "X"
         if str_val.isdigit():
             str_val = f"{int(str_val):0{N_DIGITS_FNAME}d}"
 
-        # Pad the abbrev and value to fixed widths
+        # attach
         middle_parts.append(f"{first_letters}_{str_val}")
 
     middle_string = "__".join(middle_parts)
@@ -114,6 +115,7 @@ class DAGBuilder:
             # Shared DEFAULT vars
             for key, value in asdict(test_vars).items():
                 f.write(f'DEFAULT {key}="{value}"\n')
+            f.write(f'DEFAULT LOG_FNAME_NOEXT="{fpath.stem}"\n')
             f.write("\n")
 
             # Retry rule
@@ -125,12 +127,6 @@ class DAGBuilder:
     def write_submit_file(output_dir: Path, task_image: Path) -> None:
         """Write a condor submit file."""
         test_vars_names = [x.name for x in fields(TestVars)]
-
-        log_fname = get_fname(
-            CLASSICAL_PREFIX,
-            {v: f"$({v})" for v in test_vars_names},
-            "$(clusterid).log",
-        )
 
         env_vars = [f"{v}=$({v})" for v in test_vars_names]
         env_vars.append(f"TASK_IMAGE={task_image}")
@@ -149,7 +145,7 @@ Requirements               = {REQUIREMENTS_EWMS_SETS}
 # must be quoted
 +FileSystemDomain          = "blah" 
 
-log                        = {SCRATCH_DIR / log_fname}
+log                        = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(clusterid).log"}
 
 should_transfer_files      = YES
 when_to_transfer_output    = ON_EXIT_OR_EVICT
