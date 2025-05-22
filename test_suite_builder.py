@@ -29,7 +29,9 @@ N_DIGITS_FNAME = 4
 
 EWMS_N_WORKERS = 2_000
 
-MAX_WORKER_RUNTIME = 60 * 60 * 20  # 20 hours
+# see https://portal.osg-htc.org/documentation/htc_workloads/workload_planning/jobdurationcategory/
+MAX_WORKER_RUNTIME = 60 * 60 * 2  # 20 hours
+#
 N_CORES = 1
 PRIORITY = 100
 WORKER_DISK = "1GB"
