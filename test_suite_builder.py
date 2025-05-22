@@ -25,6 +25,8 @@ CLASSICAL_PREFIX = "classical_dag"
 EWMS_PREFIX      = "ewms_workflow"  # same length so filepaths look good
 # fmt: on
 
+N_DIGITS_FNAME = 4
+
 EWMS_N_WORKERS = 2_000
 
 MAX_WORKER_RUNTIME = 60 * 60
@@ -59,7 +61,7 @@ class TestVars:
 
     TASK_RUNTIME: int = 60
     FAIL_PROB: float = 0.0
-    DO_TASK_RUNTIME_POISSON: str = "no"
+    DO_TASK_RUNTIME_POISSON: str = "n"
     WORKER_SPEED_FACTOR: tuple[float, float] | None = None
 
 
@@ -78,7 +80,8 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
 
         # Normalize value
         str_val = str_val.replace(".", "")
-        str_val = str_val.lower()
+        if str_val.isdigit():
+            str_val = f"{str_val:0{N_DIGITS_FNAME}d}"
 
         # Pad the abbrev and value to fixed widths
         middle_parts.append(f"{first_letters}_{str_val:_<5}")
@@ -259,7 +262,7 @@ def main() -> None:
         test_vars = [
             TestVars(TASKS_PER_JOB=tasks_per_job),
             TestVars(TASKS_PER_JOB=tasks_per_job, FAIL_PROB=0.01),
-            TestVars(TASKS_PER_JOB=tasks_per_job, DO_TASK_RUNTIME_POISSON="yes"),
+            TestVars(TASKS_PER_JOB=tasks_per_job, DO_TASK_RUNTIME_POISSON="y"),
             TestVars(TASKS_PER_JOB=tasks_per_job, WORKER_SPEED_FACTOR=(1.0, 5.0)),
         ]
 
