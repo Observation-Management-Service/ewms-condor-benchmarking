@@ -79,8 +79,6 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
             str_val = str(val)
 
         # Normalize value
-        if str_val.startswith("0."):
-            str_val = str_val.removeprefix("0.") + "X"
         if str_val.isdigit():
             str_val = f"{int(str_val):0{N_DIGITS_FNAME}d}"
 
