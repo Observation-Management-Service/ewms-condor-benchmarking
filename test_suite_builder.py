@@ -79,8 +79,18 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
             str_val = str(val)
 
         # Normalize value
+        # -> an int?
         if str_val.isdigit():
             str_val = f"{int(str_val):0{N_DIGITS_FNAME}d}"
+        # -> a float?
+        else:
+            try:
+                float(str_val)
+            except ValueError:
+                pass
+            else:  # put zeros on right to make up spacing
+                if (nzeros := N_DIGITS_FNAME - len(str_val)) > 0:
+                    str_val += "0" * nzeros
 
         # attach
         middle_parts.append(f"{first_letters}_{str_val}")
