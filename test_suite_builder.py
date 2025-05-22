@@ -84,9 +84,9 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
             str_val = f"{int(str_val):0{N_DIGITS_FNAME}d}"
 
         # Pad the abbrev and value to fixed widths
-        middle_parts.append(f"{first_letters}_{str_val:_<5}")
+        middle_parts.append(f"{first_letters}_{str_val}")
 
-    middle_string = "_".join(middle_parts)
+    middle_string = "__".join(middle_parts)
     return f"{prefix}__{middle_string}{suffix}"
 
 
