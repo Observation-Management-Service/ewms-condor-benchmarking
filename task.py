@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 LOGGER = logging.getLogger(__name__)
-LOGGING.basicConfig(level=LOGGING.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def get_worker_speed_factor(worker_speed_factor: tuple[float, float]) -> float:

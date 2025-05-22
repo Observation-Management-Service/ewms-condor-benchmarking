@@ -11,7 +11,7 @@ from mqclient.queue import Queue
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 LOGGER = logging.getLogger(__name__)
-LOGGING.basicConfig(level=LOGGING.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 
 async def request_ewms(rc: RestClient, ewms_request_json: Path):
