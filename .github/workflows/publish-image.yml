@@ -129,7 +129,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}.{{patch}},enable=${{ github.ref_type == 'tag' }}
 
       - name: Request Build(s)
-        uses: WIPACrepo/build-singularity-cvmfs-action@v1.4
+        uses: WIPACrepo/build-singularity-cvmfs-action@newline-2
         with:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # so job can git push
           docker_tags: ${{ steps.docker_meta.outputs.tags }}
