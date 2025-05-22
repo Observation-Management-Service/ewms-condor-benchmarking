@@ -81,7 +81,7 @@ def get_fname(prefix: str, vars: dict[str, Any], suffix: str) -> str:
         # Normalize value
         str_val = str_val.replace(".", "")
         if str_val.isdigit():
-            str_val = f"{str_val:0{N_DIGITS_FNAME}d}"
+            str_val = f"{int(str_val):0{N_DIGITS_FNAME}d}"
 
         # Pad the abbrev and value to fixed widths
         middle_parts.append(f"{first_letters}_{str_val:_<5}")
