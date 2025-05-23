@@ -119,7 +119,7 @@ class DAGBuilder:
             n_digits = len(str(n_jobs))  # Auto-calculate padding width
             for i in range(1, n_jobs + 1):
                 # dagjob
-                jobid = f"J{i: 0{n_digits}d}"
+                jobid = f"J{i:0{n_digits}d}"
                 f.write(f"JOB {jobid} {output_dir/SUBMIT_FNAME}\n")
                 # vars -- these are the same for all dagjobs
                 var_str = " ".join(f'{k}="{v}"' for k, v in asdict(test_vars).items())
