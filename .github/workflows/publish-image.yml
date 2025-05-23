@@ -8,6 +8,11 @@ on:
       - '**'
   workflow_dispatch:
     inputs:
+      do_delete:
+        description: 'Delete from CVMFS instead of build?'
+        required: false
+        default: 'false'
+        type: boolean
       platform:
         description: 'Platform'
         default: 'linux/amd64'
@@ -50,7 +55,7 @@ jobs:
           fi
 
   docker:
-    if: github.event_name != 'delete'
+    if: github.event_name != 'delete' && github.event.inputs.do_delete != 'true'
     needs: [ image-tag-prep ]
     runs-on: ubuntu-latest
     steps:
@@ -106,7 +111,7 @@ jobs:
           labels: ${{ steps.docker_meta.outputs.labels }}
 
   cvmfs-build:
-    if: github.event_name != 'delete'
+    if: github.event_name != 'delete' && github.event.inputs.do_delete != 'true'
     needs: [ docker, image-tag-prep ]
     runs-on: ubuntu-latest
     steps:
@@ -137,7 +142,7 @@ jobs:
           include_docker_repo: false
 
   cvmfs-removal:
-    if: github.event_name == 'delete'
+    if: github.event_name == 'delete' || github.event.inputs.do_delete == 'true'
     needs: [ image-tag-prep ]
     runs-on: ubuntu-latest
     steps:
