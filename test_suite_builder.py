@@ -118,14 +118,14 @@ class DAGBuilder:
             # Write JOB lines with auto-zero-padding
             n_digits = len(str(n_jobs))  # Auto-calculate padding width
             for i in range(1, n_jobs + 1):
-                f.write(f"JOB {i:0{n_digits}d} {output_dir/SUBMIT_FNAME}\n")
+                # dagjob
+                jobid = f"{i: 0{n_digits}d}"
+                f.write(f"JOB {jobid} {output_dir/SUBMIT_FNAME}\n")
+                # vars -- these are the same for all dagjobs
+                var_str = " ".join(f'{k}="{v}"' for k, v in asdict(test_vars).items())
+                var_str += f' LOG_FNAME_NOEXT="{fpath.stem}"'
+                f.write(f"VARS {jobid} {var_str}\n")
 
-            f.write("\n")
-
-            # Shared DEFAULT vars
-            for key, value in asdict(test_vars).items():
-                f.write(f'DEFAULT {key}="{value}"\n')
-            f.write(f'DEFAULT LOG_FNAME_NOEXT="{fpath.stem}"\n')
             f.write("\n")
 
             # Retry rule
