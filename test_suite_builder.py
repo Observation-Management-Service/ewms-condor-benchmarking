@@ -147,7 +147,7 @@ universe                   = container
 # we're using the same image for both the job and the task -- simple
 container_image            = {task_image}
 # override the container's default CMD (see dockerfile) 
-arguments                  = python classical_job.py
+arguments                  = python /app/classical_job.py
 
 # must support same reqs as ewms in order to compare scheduling
 Requirements               = {REQUIREMENTS_EWMS_SETS}
