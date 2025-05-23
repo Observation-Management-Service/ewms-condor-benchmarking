@@ -155,10 +155,10 @@ Requirements               = {REQUIREMENTS_EWMS_SETS}
 # must be quoted
 +FileSystemDomain          = "blah" 
 
-log                        = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAGNodeName).$(clusterid).log"}
+log                        = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).log"}
 
-output                     = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAGNodeName).$(clusterid).$(Process).out"}
-error                      = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAGNodeName).$(clusterid).$(Process).err"}
+output                     = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).out"}
+error                      = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).err"}
 
 should_transfer_files      = YES
 when_to_transfer_output    = ON_EXIT_OR_EVICT
