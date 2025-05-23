@@ -1,5 +1,6 @@
 name: build/publish docker & singularity (cvmfs) images
 
+
 on:
   push:
     branches-ignore:
@@ -25,11 +26,17 @@ on:
     branches:
       - '**'
 
+
 env:
   IMAGE: ghcr.io/observation-management-service/ewms-condor-benchmarking
   CVMFS_DEST_DIR: ewms
   FREE_DISK_SPACE: false
   DEFAULT_PLATFORM: linux/amd64  # matches 'workflow_dispatch.inputs.platform.default' above
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+
 
 jobs:
 
