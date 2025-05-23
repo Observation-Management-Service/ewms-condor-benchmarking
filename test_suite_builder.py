@@ -4,7 +4,6 @@ import argparse
 import json
 import logging
 import os
-import shutil
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -14,12 +13,27 @@ logging.basicConfig(level=logging.DEBUG)
 
 SUBMIT_FNAME = "ewms-sim.submit"
 
-SCRATCH_DIR = Path(
+_BASE_SCRATCH = Path(
     os.getenv(
         "EWMS_BENCHMARKING_SCRATCH_DIR_OVERRIDE",
         "/scratch/eevans/ewms-benchmarking",
     )
 )
+
+
+def get_next_scratch_dir(base: Path) -> Path:
+    """Automatically create a directory like /scratch/eevans/ewms-benchmarking_01, _02, etc."""
+    if not _BASE_SCRATCH.exists():
+        raise NotADirectoryError(_BASE_SCRATCH)
+    for i in range(1, 100):
+        candidate = base.parent / f"{base.name}_{i:02d}"
+        if not candidate.exists():
+            candidate.mkdir()
+            return candidate
+    raise RuntimeError("Too many scratch directories, clean up old ones.")
+
+
+SCRATCH_DIR = get_next_scratch_dir(_BASE_SCRATCH)
 
 # fmt: off
 CLASSICAL_PREFIX = "classical_dag"
@@ -295,18 +309,6 @@ def main() -> None:
             for tv in test_vars:
                 fpath = DAGBuilder.write_dag_file(SCRATCH_DIR, tv, n_jobs)
                 LOGGER.info(f"generated {str(fpath)}")
-
-    # mkdir test dirs
-    for n in range(1, 15):
-        test_dir = SCRATCH_DIR / f"test_{n:02d}"
-        os.mkdir(test_dir)
-        # mkdir a dir for each dag
-        for f in SCRATCH_DIR.iterdir():
-            if f.suffix != ".dag":
-                continue
-            subtest_dir = test_dir / f.stem
-            os.mkdir(subtest_dir)
-            shutil.copy(f, subtest_dir / f.name)
 
     # "ls" SCRATCH_DIR
     LOGGER.info(f"ls {SCRATCH_DIR}")
