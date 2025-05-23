@@ -32,6 +32,7 @@ env:
   CVMFS_DEST_DIR: ewms
   FREE_DISK_SPACE: false
   DEFAULT_PLATFORM: linux/amd64  # matches 'workflow_dispatch.inputs.platform.default' above
+  INCLUDE_DOCKER_REPO: false  # boolean
 
 
 concurrency:
@@ -150,7 +151,7 @@ jobs:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # so job can git push
           docker_tags: ${{ steps.docker_meta.outputs.tags }}
           dest_dir: ${{ env.CVMFS_DEST_DIR }}  # Required for constructing path pattern
-          include_docker_repo: false
+          include_docker_repo: ${{ env.INCLUDE_DOCKER_REPO }}
 
   cvmfs-removal:
     if: github.event_name == 'delete' || github.event.inputs.do_delete == 'true'
