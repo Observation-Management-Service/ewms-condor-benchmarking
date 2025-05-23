@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import shutil
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -305,7 +306,7 @@ def main() -> None:
                 continue
             subtest_dir = test_dir / f.stem
             os.mkdir(subtest_dir)
-            (subtest_dir / f.name).symlink_to(f)
+            shutil.copy(f, subtest_dir / f.name)
 
     # "ls" SCRATCH_DIR
     LOGGER.info(f"ls {SCRATCH_DIR}")
