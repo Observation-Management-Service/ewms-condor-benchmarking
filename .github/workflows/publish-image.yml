@@ -11,12 +11,16 @@ on:
       do_delete:
         description: 'Delete from CVMFS instead of build?'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       platform:
-        description: 'Platform'
-        default: 'linux/amd64'
+        description: 'Platform to build docker image'
         required: false
+        default: 'linux/amd64'
+        type: choice
+        options:
+          - linux/amd64
+          - linux/arm64
   delete:
     branches:
       - '**'
