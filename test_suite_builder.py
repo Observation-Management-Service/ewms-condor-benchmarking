@@ -155,7 +155,10 @@ Requirements               = {REQUIREMENTS_EWMS_SETS}
 # must be quoted
 +FileSystemDomain          = "blah" 
 
-log                        = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(clusterid).log"}
+log                        = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAGNodeName).$(clusterid).log"}
+
+output                     = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAGNodeName).$(clusterid).$(Process).out"}
+error                      = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAGNodeName).$(clusterid).$(Process).err"}
 
 should_transfer_files      = YES
 when_to_transfer_output    = ON_EXIT_OR_EVICT
@@ -215,7 +218,7 @@ class EWMSRequestBuilder:
                     "n_workers": EWMS_N_WORKERS,
                     "worker_config": {
                         "condor_requirements": "",  # no extra needs since ewms sets several already
-                        "do_transfer_worker_stdouterr": False,  # same as .submit file
+                        "do_transfer_worker_stdouterr": True,  # same as .submit file
                         "max_worker_runtime": MAX_WORKER_RUNTIME,
                         "n_cores": N_CORES,
                         "priority": PRIORITY,
