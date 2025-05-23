@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import shutil
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -121,21 +122,28 @@ class DAGBuilder:
 
     @staticmethod
     def write_dag_file(output_dir: Path, test_vars: TestVars, n_jobs: int) -> Path:
-        """Write the file."""
+        """Write the DAG file into its own subdirectory."""
 
-        # figure filepath
-        fpath = output_dir / get_fname(CLASSICAL_PREFIX, asdict(test_vars), ".dag")
+        # Figure base filename and subdir path
+        fname = get_fname(CLASSICAL_PREFIX, asdict(test_vars), ".dag")
+        subdir = output_dir / Path(fname).stem
+        subdir.mkdir()
+
+        fpath = subdir / fname
         if fpath.exists():
             raise FileExistsError(f"{fpath} already exists")
 
-        # write!
+        # Copy the shared submit file into the subdir
+        shutil.copy(output_dir / SUBMIT_FNAME, subdir / SUBMIT_FNAME)
+
+        # Write DAG file
         with open(fpath, "w") as f:
             # Write JOB lines with auto-zero-padding
             n_digits = len(str(n_jobs))  # Auto-calculate padding width
             for i in range(1, n_jobs + 1):
                 # dagjob
                 jobid = f"J{i:0{n_digits}d}"
-                f.write(f"JOB {jobid} {output_dir/SUBMIT_FNAME}\n")
+                f.write(f"JOB {jobid} {SUBMIT_FNAME}\n")  # relative path!
                 # vars -- these are the same for all dagjobs
                 var_str = " ".join(f'{k}="{v}"' for k, v in asdict(test_vars).items())
                 var_str += f' LOG_FNAME_NOEXT="{fpath.stem}"'
@@ -170,10 +178,10 @@ Requirements               = {REQUIREMENTS_EWMS_SETS}
 # must be quoted
 +FileSystemDomain          = "blah" 
 
-log                        = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).log"}
-
-output                     = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).out"}
-error                      = {SCRATCH_DIR / "$(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).err"}
+# relative paths!
+log                        = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).log"
+output                     = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).out"
+error                      = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).err"
 
 should_transfer_files      = YES
 when_to_transfer_output    = ON_EXIT_OR_EVICT
