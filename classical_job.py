@@ -3,11 +3,15 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 
 def main():
     """Sequentially spawn tasks with Apptainer."""
     n_tasks = int(os.environ["TASKS_PER_JOB"])
+
+    common_dir = os.path.abspath("./commondir")
+    Path(common_dir).mkdir(exist_ok=True)
 
     for i in range(n_tasks):
         print(f"\n--- Launching task {i + 1}/{n_tasks} ---")
@@ -18,7 +22,7 @@ def main():
                     "--containall "  # don't auto-mount anything
                     "--no-eval "  # don't interpret CL args
                     #
-                    f"--mount type=bind,source={os.path.abspath('./commondir')},target=/commondir "
+                    f"--mount type=bind,source={common_dir},target=/commondir "
                     #
                     f"--env TASK_RUNTIME={os.environ['TASK_RUNTIME']} "
                     f"--env FAIL_PROB={os.environ['FAIL_PROB']} "
