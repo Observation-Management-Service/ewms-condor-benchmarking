@@ -292,6 +292,18 @@ def main() -> None:
                 fpath = DAGBuilder.write_dag_file(SCRATCH_DIR, tv, n_jobs)
                 LOGGER.info(f"generated {str(fpath)}")
 
+    # mkdir test dirs
+    for n in range(1, 15):
+        test_dir = SCRATCH_DIR / f"test_{n:02d}"
+        os.mkdir(test_dir)
+        # mkdir a dir for each dag
+        for f in SCRATCH_DIR.iterdir():
+            if f.suffix != ".dag":
+                continue
+            subtest_dir = test_dir / f.stem
+            os.mkdir(subtest_dir)
+            (subtest_dir / f.name).symlink_to(f)
+
     # "ls" SCRATCH_DIR
     LOGGER.info(f"ls {SCRATCH_DIR}")
     for f in SCRATCH_DIR.iterdir():
