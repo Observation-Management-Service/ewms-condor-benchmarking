@@ -255,9 +255,10 @@ def main() -> None:
         raise FileNotFoundError(args.task_image)
 
     # prep SCRATCH_DIR
-    if not SCRATCH_DIR.is_dir() or list(SCRATCH_DIR.iterdir()):
+    if not SCRATCH_DIR.is_dir():
+        raise NotADirectoryError(SCRATCH_DIR)
+    if list(SCRATCH_DIR.iterdir()):
         raise RuntimeError(f"{SCRATCH_DIR=} must be an empty directory")
-    SCRATCH_DIR.mkdir(exist_ok=True)
 
     # all dags share same submit file
     DAGBuilder.write_submit_file(SCRATCH_DIR, args.task_image)
