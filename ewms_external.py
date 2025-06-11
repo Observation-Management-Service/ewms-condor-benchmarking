@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import json
 import logging
-import time
 from pathlib import Path
 
 from mqclient.queue import Queue
@@ -32,13 +31,12 @@ async def request_ewms(rc: RestClient, ewms_request_json: Path):
     )
 
 
-async def get_queues(
+async def get_input_queue(
     rc: RestClient,
     workflow_id: str,
     in_mqid: str,
-    out_mqid: str,
-) -> tuple[Queue, Queue]:
-    """Retrieve the queue objects."""
+) -> Queue:
+    """Retrieve the input queue object."""
     LOGGER.info("getting queues...")
     mqprofiles: list[dict] = []
     while not (mqprofiles and all(m["is_activated"] for m in mqprofiles)):
@@ -60,54 +58,16 @@ async def get_queues(
         auth_token=in_mqprofile["auth_token"],
     )
 
-    out_mqprofile = next(p for p in mqprofiles if p["mqid"] == out_mqid)
-    out_queue = Queue(
-        out_mqprofile["broker_type"],
-        address=out_mqprofile["broker_address"],
-        name=out_mqprofile["mqid"],
-        auth_token=out_mqprofile["auth_token"],
-        timeout=4 * 60 * 60,  # 4 hours
-    )
-
-    return in_queue, out_queue
+    return in_queue
 
 
-async def serve_events(n_tasks: int, in_queue: Queue, out_queue: Queue):
-    """Serve 'n_tasks' number of events (tasks) and wait to receive all return events."""
-    start = time.time()
-
-    inflight: list[int] = []
-
-    # 1st: pub -- include the "n" integer so later we can track it
+async def serve_events(n_tasks: int, in_queue: Queue):
+    """Serve 'n_tasks' number of events (tasks)."""
     async with in_queue.open_pub() as pub:
         for n in range(n_tasks):
             await pub.send({"n": n})
-            inflight.append(n)
+            # inflight.append(n)
             LOGGER.info(f"Sent: #{n}")
-
-    # 2nd: sub
-    async def sub_time():
-        # receive all the we can -- there should be 1+ return messages (same "n")
-        async with out_queue.open_sub() as sub:
-            ct = -1
-            async for msg in sub:
-                ct += 1
-                LOGGER.info(f"Received: #{ct} ({msg})")
-                try:
-                    inflight.remove(msg["n"])
-                except ValueError:
-                    LOGGER.info(
-                        "ok: received duplicate (ewms does not guarantee deliver-once)"
-                    )
-                if not inflight:
-                    LOGGER.info(f"RECEIVED ALL EXPECTED MESSAGES")
-                    return
-
-    await sub_time()
-
-    # done
-    end = time.time()
-    LOGGER.info(f"done: {start=} {end=} ({end - start})")
 
 
 async def main():
@@ -133,9 +93,14 @@ async def main():
         retries=0,
     )
 
+    # request
     workflow_id, in_mqid, out_mqid = await request_ewms(rc, args.request_json)
-    in_queue, out_queue = await get_queues(rc, workflow_id, in_mqid, out_mqid)
-    await serve_events(args.n_tasks, in_queue, out_queue)
+
+    # load queue
+    in_queue = await get_input_queue(rc, workflow_id, in_mqid)
+    await serve_events(args.n_tasks, in_queue)
+    LOGGER.info(f"done sending event messages: {in_queue}")
+    LOGGER.info(f"OPTIONAL: to receive output event messages use queue: {out_mqid}")
 
 
 if __name__ == "__main__":
