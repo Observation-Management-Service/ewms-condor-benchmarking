@@ -1,3 +1,3 @@
 numpy
 wipac-rest-tools
-oms-mqclient
+oms-mqclient[rabbitmq]
