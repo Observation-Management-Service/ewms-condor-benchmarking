@@ -229,8 +229,8 @@ class EWMSRequestBuilder:
             "tasks": [
                 {
                     "cluster_locations": ["sub-2"],
-                    "in_queue_aliases": ["input-queue"],
-                    "out_queue_aliases": ["output-queue"],
+                    "input_queue_aliases": ["input-queue"],
+                    "output_queue_aliases": ["output-queue"],
                     "task_image": str(task_image),
                     "task_args": "",
                     "task_env": {
@@ -241,6 +241,7 @@ class EWMSRequestBuilder:
                     "n_workers": EWMS_N_WORKERS,
                     "pilot_config": {
                         "tag": "latest",
+                        "image_source": "auto",
                         "environment": {
                             # incoming-message timeouts (sec)
                             "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": 5 * 60,
