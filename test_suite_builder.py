@@ -239,6 +239,15 @@ class EWMSRequestBuilder:
                         if k not in ["N_JOBS"]
                     },
                     "n_workers": EWMS_N_WORKERS,
+                    "pilot_config": {
+                        "tag": "latest",
+                        "environment": {
+                            # incoming-message timeouts (sec)
+                            "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": 5 * 60,
+                            "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": 1 * 60,
+                        },
+                        "input_files": [],
+                    },
                     "worker_config": {
                         "condor_requirements": "",  # no extra needs since ewms sets several already
                         "do_transfer_worker_stdouterr": True,  # same as .submit file
