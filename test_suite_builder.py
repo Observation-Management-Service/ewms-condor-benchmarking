@@ -179,9 +179,9 @@ Requirements               = {REQUIREMENTS_EWMS_SETS}
 +FileSystemDomain          = "blah" 
 
 # relative paths!
-log                        = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).log"
-output                     = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).out"
-error                      = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).err"
+log                        = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).log
+output                     = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).out
+error                      = $(LOG_FNAME_NOEXT).$(DAG_NODE_NAME).$(clusterid).$(Process).err
 
 should_transfer_files      = YES
 when_to_transfer_output    = ON_EXIT_OR_EVICT
