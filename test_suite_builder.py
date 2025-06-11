@@ -23,11 +23,11 @@ _BASE_SCRATCH = Path(
 
 
 def get_next_scratch_dir(base: Path) -> Path:
-    """Automatically create a directory like /scratch/eevans/ewms-benchmarking_01, _02, etc."""
-    if not _BASE_SCRATCH.exists():
-        raise NotADirectoryError(_BASE_SCRATCH)
+    """Automatically create a directory like /scratch/eevans/ewms-benchmarking/runs_01, _02, etc."""
+    if not base.exists():
+        raise NotADirectoryError(base)
     for i in range(1, 100):
-        candidate = base.parent / f"{base.name}_{i:02d}"
+        candidate = base / f"runs_{i:02d}"
         if not candidate.exists():
             candidate.mkdir()
             return candidate
