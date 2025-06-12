@@ -81,7 +81,12 @@ async def main():
         type=Path,
         help="JSON file containing the ewms workflow request",
     )
-
+    parser.add_argument(
+        "--n-tasks",
+        required=True,
+        type=int,
+        help="Total number of tasks to generate",
+    )
     args = parser.parse_args()
     LOGGER.info(args)
 

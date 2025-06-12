@@ -31,7 +31,7 @@ cd /scratch/eevans/ewms-benchmarking/runs_<...>/
 ```
 
 ```bash
-tag="YOURTAG";img="/cvmfs/icecube.opensciencegrid.org/containers/ewms/observation-management-service/ewms-condor-benchmarking:main-$tag";apptainer run --pwd /app --mount type=bind,source=$(dirname "$img"),dst=$(dirname "$img"),ro --mount type=bind,source=/scratch/eevans/,dst=/scratch/eevans/ "$img" python ewms_external.py --request-json /scratch/eevans/ewms-benchmarking/runs_<...>/ewms_workflow__<...>.json
+tag="YOURTAG";img="/cvmfs/icecube.opensciencegrid.org/containers/ewms/observation-management-service/ewms-condor-benchmarking:main-$tag";apptainer run --pwd /app --mount type=bind,source=$(dirname "$img"),dst=$(dirname "$img"),ro --mount type=bind,source=/scratch/eevans/,dst=/scratch/eevans/ "$img" python ewms_external.py --request-json $PWD/ewms_workflow__<...>.json
 ```
 
 ## Calculating Runtimes for Benchmarking
