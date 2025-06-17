@@ -2,33 +2,13 @@ name: build/publish docker & singularity (cvmfs) images
 
 
 on:
-  push:
-    branches-ignore:
-      - '**'
-    tags:
-      - '**'
   workflow_dispatch:
     inputs:
-      do_delete:
-        description: 'Delete from CVMFS instead of build?'
+      replace_all:
+        description: "Delete all repo's images on CVMFS, then build?"
         required: false
         default: false
         type: boolean
-      platform:
-        description: 'Platform to build docker image'
-        required: false
-        default: 'linux/amd64'
-        type: choice
-        options:
-          - linux/amd64
-          - linux/arm64
-  delete:
-    branches:
-      - '**'
-
-
-env:
-  DEFAULT_PLATFORM: linux/amd64  # matches 'workflow_dispatch.inputs.platform.default' above
 
 
 concurrency:
@@ -40,11 +20,20 @@ jobs:
   image:
     runs-on: ubuntu-latest
     steps:
+      - name: Determine action
+        id: set_action
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          
+          if [[ "${{ github.event.inputs.do_delete }}" == "true" ]]; then
+            echo "action=CVMFS_REMOVE_THEN_BUILD" >> "$GITHUB_OUTPUT"
+          else
+            echo "action=CVMFS_BUILD" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: WIPACrepo/wipac-dev-publish-image-action@main
         with:
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # so job can git push
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           image: ghcr.io/observation-management-service/ewms-condor-benchmarking
-          action: ''
+          action: ${{ steps.set_action.outputs.action }}
           cvmfs_dest_dir: ewms/observation-management-service/
-          free_disk_space: false
-          build_platform: ${{ github.event.inputs.platform || env.DEFAULT_PLATFORM }}
