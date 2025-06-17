@@ -28,9 +28,6 @@ on:
 
 
 env:
-  IMAGE: ghcr.io/observation-management-service/ewms-condor-benchmarking
-  CVMFS_DEST_DIR: ewms/observation-management-service/
-  FREE_DISK_SPACE: false
   DEFAULT_PLATFORM: linux/amd64  # matches 'workflow_dispatch.inputs.platform.default' above
 
 
@@ -40,129 +37,14 @@ concurrency:
 
 jobs:
 
-  image-tag-prep:
-    runs-on: ubuntu-latest
-    outputs:
-      IMAGE_TAG_NAME: ${{ steps.vars.outputs.image_tag_name }}
-    steps:
-      - name: Validate and Prep Image Tag Variables
-        id: vars
-        run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
-
-          # validate slash-format
-          if [[ ! "$IMAGE" =~ ^[^/]+/[^/]+(/[^/]+)?$ ]]; then
-              echo "::error::IMAGE must be in the form 'namespace/image' or 'registry/namespace/image'"
-              exit 1
-          fi
-
-          # validate there's no tag or digest attached
-          last_segment="${IMAGE##*/}"
-          if [[ "$last_segment" == *:* || "$last_segment" == *@* ]]; then
-              echo "::error::IMAGE must not include a tag or digest"
-              exit 1
-          else
-              echo "image_tag_name=$last_segment" >> "$GITHUB_OUTPUT"
-          fi
-
-  docker:
-    if: github.event_name != 'delete' && github.event.inputs.do_delete != 'true'
-    needs: [ image-tag-prep ]
+  image:
     runs-on: ubuntu-latest
     steps:
-      - uses: jlumbroso/free-disk-space@main  # clears space for image build
-        if: ${{ env.FREE_DISK_SPACE == 'true' }}
-        with:
-          docker-images: false  # keep docker otherwise build will re-download them
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
-
-      - id: docker_meta
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ${{ env.IMAGE }}
-          tags: |
-            # branches (PRs)
-            type=sha,prefix={{branch}}-,enable=${{ github.ref_type == 'branch' }}
-            # release tags
-            type=semver,pattern={{major}},enable=${{ github.ref_type == 'tag' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.ref_type == 'tag' }}
-            type=semver,pattern={{major}}.{{minor}}.{{patch}},enable=${{ github.ref_type == 'tag' }}
-
-      - name: Login to Docker Hub
-        if: ${{ ! startsWith(env.IMAGE, 'ghcr.io/') }}
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Login to GitHub Container Registry
-        if: ${{ startsWith(env.IMAGE, 'ghcr.io/') }}
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup QEMU (if platform requires it)
-        if: contains(github.event.inputs.platform || env.DEFAULT_PLATFORM, 'arm')
-        uses: docker/setup-qemu-action@v2
-
-      - uses: docker/setup-buildx-action@v2
-
-      - uses: docker/build-push-action@v3
-        with:
-          context: .
-          platforms: ${{ github.event.inputs.platform || env.DEFAULT_PLATFORM }}
-          push: true
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
-
-  cvmfs-build:
-    if: github.event_name != 'delete' && github.event.inputs.do_delete != 'true'
-    needs: [ docker, image-tag-prep ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
-
-      - id: docker_meta
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ${{ env.IMAGE }}
-          flavor: |
-            latest=false
-          tags: |
-            # we only want to put version/sha-specific images on CVMFS
-            # branches (PRs)
-            type=sha,prefix={{branch}}-,enable=${{ github.ref_type == 'branch' }}
-            # release tags
-            type=semver,pattern={{major}}.{{minor}}.{{patch}},enable=${{ github.ref_type == 'tag' }}
-
-      - name: Request Build(s)
-        uses: WIPACrepo/build-singularity-cvmfs-action@v2.0
+      - uses: WIPACrepo/wipac-dev-publish-image-action@main
         with:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # so job can git push
-          docker_tags: ${{ steps.docker_meta.outputs.tags }}
-          dest_dir: ${{ env.CVMFS_DEST_DIR }}  # Required for constructing path pattern
-
-  cvmfs-removal:
-    if: github.event_name == 'delete' || github.event.inputs.do_delete == 'true'
-    needs: [ image-tag-prep ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
-
-      - name: Request Removal(s)
-        uses: WIPACrepo/build-singularity-cvmfs-action@v2.0
-        with:
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # so job can git push
-          delete_image_tags: "${{ needs.image-tag-prep.outputs.IMAGE_TAG_NAME }}:${{ github.ref_name }}-[SHA]"
-          dest_dir: ${{ env.CVMFS_DEST_DIR }}  # Required for constructing path pattern
+          image: ghcr.io/observation-management-service/ewms-condor-benchmarking
+          action: ''
+          cvmfs_dest_dir: ewms/observation-management-service/
+          free_disk_space: false
+          build_platform: ${{ github.event.inputs.platform || env.DEFAULT_PLATFORM }}
