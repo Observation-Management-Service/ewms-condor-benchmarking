@@ -40,3 +40,4 @@ jobs:
           dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           cvmfs_dest_dir: ewms/observation-management-service/
+          cvmfs_remove_tags: '${{ github.ref_name }}-[SHA]'
