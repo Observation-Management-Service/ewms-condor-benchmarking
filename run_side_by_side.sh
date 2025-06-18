@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+########################################################################################################################
+# Run benchmarks side-by-side to use same conditions
+########################################################################################################################
+
 if [[ "$(whoami)" != "ewms" ]]; then
     echo "Error: This script must be run as user 'ewms'." >&2
     exit 1
@@ -17,28 +21,29 @@ if [[ -z ${BENCHMARK_TAG:-} ]]; then
 fi
 
 ########################################################################################################################
-# Run benchmarks side-by-side to use same conditions
+# run
 
-# classical dag (very quick command)
-cd classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_n__WSF_1.0_5.0
-condor_submit_dag classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_n__WSF_1.0_5.0.dag
-# now, ewms (takes a minute or so)
-cd ..
-img="/cvmfs/icecube.opensciencegrid.org/containers/ewms/observation-management-service/ewms-condor-benchmarking:main-$BENCHMARK_TAG"
-apptainer run --pwd /app \
-    --mount type=bind,source=$(dirname "$img"),dst=$(dirname "$img"),ro \
-    --mount type=bind,source=/scratch/eevans/,dst=/scratch/eevans/ \
-    "$img" python ewms_external.py \
-    --request-json $PWD/ewms_workflow__TPJ_ewms__TR_0060__FP_0.00__DTRP_n__WSF_1.0_5.0.json \
-    --n-tasks 200_000
+run_pair() {
+    local classical_dir="$1"
+    local ewms_json="$2"
 
-# TODO: do same for the following... make a function
+    echo "Running classical: $classical_dir"
+    cd "$classical_dir"
+    condor_submit_dag "${classical_dir}.dag"
 
-classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_n__WSF_None
-ewms_workflow__TPJ_ewms__TR_0060__FP_0.00__DTRP_n__WSF_None.json
+    echo "Running EWMS: $ewms_json"
+    cd ..
+    local img="/cvmfs/icecube.opensciencegrid.org/containers/ewms/observation-management-service/ewms-condor-benchmarking:main-$BENCHMARK_TAG"
+    apptainer run --pwd /app \
+        --mount type=bind,source="$(dirname "$img")",dst="$(dirname "$img")",ro \
+        --mount type=bind,source=/scratch/eevans/,dst=/scratch/eevans/ \
+        "$img" python ewms_external.py \
+        --request-json "$PWD/$ewms_json" \
+        --n-tasks 200_000
+}
 
-classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_y__WSF_None
-ewms_workflow__TPJ_ewms__TR_0060__FP_0.00__DTRP_y__WSF_None.json
-
-classical_dag__TPJ_0100__TR_0060__FP_0.01__DTRP_n__WSF_None
-ewms_workflow__TPJ_ewms__TR_0060__FP_0.01__DTRP_n__WSF_None.json
+# Execute benchmark pairs
+run_pair classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_n__WSF_1.0_5.0 ewms_workflow__TPJ_ewms__TR_0060__FP_0.00__DTRP_n__WSF_1.0_5.0.json
+run_pair classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_n__WSF_None ewms_workflow__TPJ_ewms__TR_0060__FP_0.00__DTRP_n__WSF_None.json
+run_pair classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_y__WSF_None ewms_workflow__TPJ_ewms__TR_0060__FP_0.00__DTRP_y__WSF_None.json
+run_pair classical_dag__TPJ_0100__TR_0060__FP_0.01__DTRP_n__WSF_None ewms_workflow__TPJ_ewms__TR_0060__FP_0.01__DTRP_n__WSF_None.json
