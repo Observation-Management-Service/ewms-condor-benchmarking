@@ -338,7 +338,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if getpass.getuser() != "ewms":
+    if not os.getenv("CI") and getpass.getuser() != "ewms":
         print("Error: This script must be run as user 'ewms'.", file=sys.stderr)
         sys.exit(1)
     main()
