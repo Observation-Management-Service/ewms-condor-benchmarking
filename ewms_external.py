@@ -10,7 +10,7 @@ from mqclient.queue import Queue
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 async def request_ewms(rc: RestClient, ewms_request_json: Path):
@@ -19,10 +19,10 @@ async def request_ewms(rc: RestClient, ewms_request_json: Path):
 
     with open(ewms_request_json) as f:
         post_body = json.load(f)
-    LOGGER.debug(json.dumps(post_body, indent=4))
+    LOGGER.info(json.dumps(post_body, indent=4))
 
     resp = await rc.request("POST", "/v1/workflows", post_body)
-    LOGGER.debug(json.dumps(resp, indent=4))
+    LOGGER.info(json.dumps(resp, indent=4))
 
     return (
         resp["workflow"]["workflow_id"],
