@@ -61,13 +61,17 @@ async def get_input_queue(
     return in_queue
 
 
-async def serve_events(n_tasks: int, in_queue: Queue):
+async def serve_events(n_tasks: int, in_queue: Queue) -> int:
     """Serve 'n_tasks' number of events (tasks)."""
+    n = -1
+
     async with in_queue.open_pub() as pub:
         for n in range(n_tasks):
             await pub.send({"n": n})
             # inflight.append(n)
             LOGGER.info(f"Sent: #{n}")
+
+    return n + 1
 
 
 async def main():
@@ -103,8 +107,8 @@ async def main():
 
     # load queue
     in_queue = await get_input_queue(rc, workflow_id, in_mqid)
-    await serve_events(args.n_tasks, in_queue)
-    LOGGER.info(f"done sending event messages: {in_queue}")
+    nsent = await serve_events(args.n_tasks, in_queue)
+    LOGGER.info(f"done sending {nsent} event messages: {in_queue}")
     LOGGER.info(f"OPTIONAL: to receive output event messages use queue: {out_mqid}")
 
 
