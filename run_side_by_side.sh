@@ -5,14 +5,14 @@ set -euo pipefail
 # Run benchmarks side-by-side to use same conditions
 ########################################################################################################################
 
-SCRATCH_DIR="/scratch/eevans/"
+readonly SCRATCH_DIR="/scratch/eevans"
 
 if [[ "$(whoami)" != "ewms" ]]; then
     echo "Error: This script must be run as user 'ewms'." >&2
     exit 1
 fi
 
-if [[ $PWD != $SCRATCH_DIR/ewms-benchmarking/runs_* ]]; then
+if [[ $PWD != "$SCRATCH_DIR"/ewms-benchmarking/runs_* ]]; then
     echo "Error: Must be in $SCRATCH_DIR/ewms-benchmarking/runs_*" >&2
     exit 1
 fi
@@ -62,13 +62,13 @@ run_pair() {
     echo "Running classical: $classical_dir"
     cd "$classical_dir"
     condor_submit_dag "${classical_dir}.dag"
+    cd ..
 
     echo "Running EWMS: $ewms_json"
-    cd ..
     local img="/cvmfs/icecube.opensciencegrid.org/containers/ewms/observation-management-service/ewms-condor-benchmarking:main-$BENCHMARK_TAG"
     apptainer run --pwd /app \
         --mount type=bind,source="$(dirname "$img")",dst="$(dirname "$img")",ro \
-        --mount type=bind,source=$SCRATCH_DIR/,dst=$SCRATCH_DIR/ \
+        --mount type=bind,source="${SCRATCH_DIR%/}",dst="${SCRATCH_DIR%/}" \
         "$img" python ewms_external.py \
         --request-json "$PWD/$ewms_json" \
         --n-tasks 200_000
