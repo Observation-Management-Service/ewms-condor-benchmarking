@@ -31,7 +31,7 @@ jobs:
             echo "action=CVMFS_BUILD" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: WIPACrepo/wipac-dev-publish-image-action@main
+      - uses: WIPACrepo/wipac-dev-publish-image-action@readme
         with:
           image: ghcr.io/observation-management-service/ewms-condor-benchmarking
           action: ${{ steps.set_action.outputs.action }}
