@@ -67,7 +67,7 @@ async def serve_events(n_tasks: int, in_queue: Queue) -> int:
 
     async with in_queue.open_pub() as pub:
         for n in range(n_tasks):
-            await pub.send({"n": n})
+            await pub.send(str(n))  # str & bytes message don't incur json cost on pilot
             # inflight.append(n)
             LOGGER.info(f"Sent: #{n}")
 
