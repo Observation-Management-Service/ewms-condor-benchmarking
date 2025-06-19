@@ -70,7 +70,8 @@ REQUIREMENTS_EWMS_SETS = (
     'GLIDEIN_Site =!= "SDSC-PRP" && '
     'GLIDEIN_Site =!= "SU-ITS" && '
     'GLIDEIN_Site =!= "San Diego Supercomputer Center" && '
-    'OSG_SITE_NAME =!= "Wichita State University" '  # &&
+    'OSG_SITE_NAME =!= "Wichita State University" && '
+    '(TARGET.Arch == "X86_64")'  # this is auto-added by ewms/condor
 )
 
 
