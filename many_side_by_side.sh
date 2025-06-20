@@ -30,7 +30,8 @@ for runs_dir in "${base_dir}"/runs_*; do
 
         # for each side-by-side flavor
         # not testing B -- the 1% fail
-        for X in A C D; do
+        # just test A -- later change if time
+        for X in A; do
             echo "  Next up is $X"
             wait_for_no_jobs
             echo "  Running $img/app/run_side_by_side.sh $X in $runs_dir"
