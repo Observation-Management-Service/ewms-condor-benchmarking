@@ -14,8 +14,8 @@ base_dir="/scratch/eevans/ewms-benchmarking"
 img="/cvmfs/icecube.opensciencegrid.org/containers/ewms/observation-management-service/ewms-condor-benchmarking:main-$BENCHMARK_TAG"
 
 wait_for_no_jobs() {
-    # waits for there to be no 'ewms'-user jobs
-    while condor_q ewms -format '%d\n' ClusterId | read -r _; do
+    # waits for there to be no 'ewms'-user jobs (other than removed jobs)
+    while condor_q ewms -constraint 'JobStatus != 3' -format '%d\n' ClusterId | read -r _; do
         echo "[WAIT] ewms has submitted Condor jobs. Waiting..."
         sleep 1800 # 30 mins
     done
