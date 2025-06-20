@@ -250,8 +250,12 @@ class EWMSRequestBuilder:
                             # incoming-message timeouts (sec)
                             "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": 5 * 60,
                             "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": 1 * 60,
-                            "EWMS_PILOT_QUARANTINE_TIME": 120,
-                            # "EWMS_PILOT_STOP_LISTENING_ON_TASK_ERROR": True,  # note: already the default
+                            # NOTE:
+                            # not setting:
+                            #  - EWMS_PILOT_STOP_LISTENING_ON_TASK_ERROR (True by default)
+                            #  - EWMS_PILOT_QUARANTINE_TIME (1hr by default)
+                            # because, we want to keep a consistent cluster condition
+                            # for the side-by-side benchmark tests w/ the classical dags
                         },
                         "input_files": [],
                     },
