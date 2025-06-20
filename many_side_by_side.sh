@@ -7,7 +7,7 @@ if [[ $# -lt 1 ]]; then
     exit 1
 fi
 
-BENCHMARK_TAG="$1"
+export BENCHMARK_TAG="$1"
 
 # Base directory containing runs_*
 base_dir="/scratch/eevans/ewms-benchmarking"
