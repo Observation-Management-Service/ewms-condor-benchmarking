@@ -28,10 +28,10 @@ screen -dmS ewms_benchmarking_many bash -c "${img}/app/many_side_by_side.sh ${BE
 
 ## Runtime (Workflow) Calculation
 
-| System        | Start Time                  | End Time                            | Notes                                 |
-|---------------|-----------------------------|-------------------------------------|---------------------------------------|
-| Classical DAG | `submit time` (in job log)  | `time of last job finish`           | get from job event log                |
-| EWMS          | `request time` (in EWMS DB) | `time of last message sent` ( logs) | `grep` cluster job logs for `"Chirp"` |
+| System        | Start Time                  | End Time                                   | Notes                                 |
+|---------------|-----------------------------|--------------------------------------------|---------------------------------------|
+| Classical DAG | `submit time` (in job log)  | `time of last job finish`                  | get from job event log                |
+| EWMS          | `request time` (in EWMS DB) | `time of last output-message sent` ( logs) | `grep` cluster job logs for `"Chirp"` |
 
 ---
 
