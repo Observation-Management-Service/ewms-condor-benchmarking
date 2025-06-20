@@ -21,7 +21,7 @@ See [run_side_by_side.sh](run_side_by_side.sh)
 Also:
 
 ```bash
-screen -dmS ewms_benchmarking_many bash -c "${img}/app/many_side_by_side.sh >> /scratch/eevans/ewms_benchmarking_many.log 2>&1"
+screen -dmS ewms_benchmarking_many bash -c "${img}/app/many_side_by_side.sh ${BENCHMARK_TAG} >> /scratch/eevans/ewms_benchmarking_many.log 2>&1"
 ```
 
 ## Calculating Runtimes for Benchmarking
