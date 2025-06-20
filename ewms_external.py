@@ -26,8 +26,8 @@ async def request_ewms(rc: RestClient, ewms_request_json: Path):
 
     return (
         resp["workflow"]["workflow_id"],
-        resp["task_directives"][0]["input_queues"][0],
-        resp["task_directives"][0]["output_queues"][0],
+        resp["task_directives"][0]["input_queues"][0],  # we could also just use alias..
+        resp["task_directives"][0]["output_queues"][0],  # ^^^
     )
 
 
@@ -77,7 +77,7 @@ async def serve_events(n_tasks: int, in_queue: Queue) -> int:
 async def main():
     """Main."""
     parser = argparse.ArgumentParser(
-        description="Submit EWMS task workflow and collect results."
+        description="Submit EWMS task workflow and send events."
     )
     parser.add_argument(
         "--request-json",
