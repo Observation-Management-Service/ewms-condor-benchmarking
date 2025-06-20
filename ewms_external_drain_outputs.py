@@ -58,7 +58,6 @@ async def main():
     )
     parser.add_argument(
         "workflow_id",
-        required=True,
         help="the ewms workflow id",
     )
     args = parser.parse_args()
