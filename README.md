@@ -16,6 +16,14 @@ BENCHMARK_TAG="YOURTAG";img="/cvmfs/icecube.opensciencegrid.org/containers/ewms/
 
 See [run_side_by_side.sh](run_side_by_side.sh)
 
+### Running Many
+
+Also:
+
+```bash
+screen -dmS ewms_benchmarking_many bash -c "${img}/app/many_side_by_side.sh >> /scratch/eevans/ewms_benchmarking_many.log 2>&1"
+```
+
 ## Calculating Runtimes for Benchmarking
 
 TODO (on my whiteboard)
