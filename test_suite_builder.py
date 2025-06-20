@@ -257,6 +257,8 @@ class EWMSRequestBuilder:
                             # because, we want to keep a consistent cluster condition
                             # for the side-by-side benchmark tests w/ the classical dags
                             # *AND* for the 1%-failure tests, we are mimicking bad nodes.
+                            # In addition, the EWMS total runtimes are measured by
+                            # the final output-event time (not cluster done time).
                         },
                         "input_files": [],
                     },
