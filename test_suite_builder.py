@@ -256,6 +256,7 @@ class EWMSRequestBuilder:
                             #  - EWMS_PILOT_QUARANTINE_TIME (1hr by default)
                             # because, we want to keep a consistent cluster condition
                             # for the side-by-side benchmark tests w/ the classical dags
+                            # *AND* for the 1%-failure tests, we are mimicking bad nodes.
                         },
                         "input_files": [],
                     },
