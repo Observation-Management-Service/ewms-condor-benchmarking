@@ -59,13 +59,12 @@ run_pair() {
     local classical_dir="$1"
     local ewms_json="$2"
 
+    echo "Running classical: $classical_dir"
+    cd "$classical_dir"
     if [[ -f "${classical_dir}.dag.condor.sub" ]]; then
         echo "WARNING: DAG has already been submitted, skipping this pair."
         return
     fi
-
-    echo "Running classical: $classical_dir"
-    cd "$classical_dir"
     condor_submit_dag "${classical_dir}.dag"
     cd ..
 
