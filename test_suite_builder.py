@@ -250,7 +250,7 @@ class EWMSRequestBuilder:
                             # incoming-message timeouts (sec)
                             "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": 5 * 60,
                             "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": 1 * 60,
-                            "EWMS_PILOT_QUARANTINE_TIME": 60,
+                            "EWMS_PILOT_QUARANTINE_TIME": 120,
                         },
                         "input_files": [],
                     },
