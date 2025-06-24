@@ -1,17 +1,12 @@
 """Get the end times (time of last finished task) for each taskforce."""
 
+import argparse
 from datetime import datetime
 from pathlib import Path
 
-BASE_DIR = Path.cwd()
-latest_times: dict[str, datetime] = {}
 
-for tf_path in BASE_DIR.glob("ewms-taskforce-TF-*"):
-    if not tf_path.is_dir():
-        continue
-
-    tf_id = tf_path.name
-    latest_time = None
+def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
+    latest_time: datetime | None = None
 
     for err_file in tf_path.rglob("*.err"):
         try:
@@ -19,21 +14,48 @@ for tf_path in BASE_DIR.glob("ewms-taskforce-TF-*"):
                 for line in f:
                     if "just now" not in line:
                         continue
-                    if len(line) < 23:
-                        continue  # not enough chars for timestamp
                     timestamp_str = line[:23]  # '2025-06-24 13:04:17.464'
                     try:
                         dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S.%f")
                         if latest_time is None or dt > latest_time:
                             latest_time = dt
                     except ValueError:
-                        continue  # malformed timestamp
+                        raise
         except Exception as e:
             print(f"[WARN] Could not read {err_file}: {e}")
 
-    if latest_time:
-        latest_times[tf_id] = latest_time
+    return latest_time
 
-# Print sorted by taskforce ID
-for tf_id in sorted(latest_times):
-    print(f"{tf_id} {latest_times[tf_id].isoformat(sep=' ')}")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Get end times for one or more taskforces."
+    )
+    parser.add_argument(
+        "dir",
+        type=Path,
+        help="A taskforce dir or a directory containing multiple 'ewms-taskforce-TF-*' dirs (default: current directory)",
+    )
+    args = parser.parse_args()
+
+    # Build list of taskforce directories to process
+    if args.dir.name.startswith("ewms-taskforce-TF-"):
+        tf_dirs = [args.dir]
+    else:
+        tf_dirs = [p for p in args.dir.glob("ewms-taskforce-TF-*") if p.is_dir()]
+    tf_dirs = [p.resolve() for p in tf_dirs]
+
+    results: dict[str, datetime] = {}
+
+    # parse
+    for tf_path in tf_dirs:
+        final_time = get_final_time_for_taskforce(tf_path)
+        results[tf_path.name] = final_time
+
+    # print
+    for tf_id in sorted(results):
+        print(f"{tf_id} {results[tf_id].isoformat(sep=' ')}")
+
+
+if __name__ == "__main__":
+    main()
