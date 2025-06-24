@@ -74,18 +74,21 @@ async def main():
     tf_dirs = [p.resolve() for p in tf_dirs]
     print(f"looking at {[str(d) for d in tf_dirs]}...")
 
-    # get endtimes
-    endtimes: dict[str, datetime] = {}
+    # parse dirs and query ewms
+    runtimes: dict[str, tuple[datetime, datetime]] = {}
     for tf_path in tf_dirs:
         final_time = get_final_time_for_taskforce(tf_path)
-        endtimes[tf_path.name] = final_time
-    for tf_id in sorted(endtimes):
-        print(f"{tf_id} {endtimes[tf_id].isoformat(sep=' ')}")
+        start_time = await get_creation_time_for_wf(rc, tf_path.name)
+        runtimes[tf_path.name] = (start_time, final_time)
 
-    # get start times
-    starttimes: dict[str, datetime] = {}
-    for tf_path in tf_dirs:
-        starttimes[tf_path.name] = await get_creation_time_for_wf(rc, tf_path.name)
+    # Print sorted by taskforce ID
+    for tf_dname in sorted(runtimes):
+        start, end = runtimes[tf_dname]
+        print(
+            f"{tf_dname} start={start.isoformat(sep=' ')} "
+            f"end={end.isoformat(sep=' ')} "
+            f"duration={end - start}"
+        )
 
 
 if __name__ == "__main__":
