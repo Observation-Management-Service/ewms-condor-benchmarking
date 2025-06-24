@@ -29,7 +29,7 @@ def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
         except Exception as e:
             print(f"[WARN] Could not read {err_file}: {e}")
 
-    print(f"-> {latest_time}")
+    print(f"-> {latest_time=}")
     return latest_time
 
 
@@ -38,13 +38,15 @@ async def get_creation_time_for_wf(rc: RestClient, tf_dname: str) -> datetime:
     def _to_workflow_id(tf_dir: str) -> str:
         # ewms-taskforce-TF-685643b1-7a50f872-ba2017b8-05bfe8b1 -> WF-685643b1-7a50f872
         parts = tf_dir.split("-")
-        return f"WF-{parts[2]}-{parts[3]}"
+        return f"WF-{parts[3]}-{parts[4]}"
 
     workflow_id = _to_workflow_id(tf_dname)
 
     resp = await rc.request("GET", f"/v1/workflows/{workflow_id}")
 
-    return datetime.fromtimestamp(resp["timestamp"])
+    start_time = datetime.fromtimestamp(resp["timestamp"])
+    print(f"-> {start_time=}")
+    return start_time
 
 
 async def main():
