@@ -8,6 +8,8 @@ from pathlib import Path
 def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
     latest_time: datetime | None = None
 
+    print(f"parsing {tf_path}...")
+
     for err_file in tf_path.rglob("*.err"):
         try:
             with err_file.open() as f:
@@ -24,6 +26,7 @@ def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
         except Exception as e:
             print(f"[WARN] Could not read {err_file}: {e}")
 
+    print(f"-> {latest_time}")
     return latest_time
 
 
@@ -44,6 +47,7 @@ def main():
     else:
         tf_dirs = [p for p in args.dir.glob("ewms-taskforce-TF-*") if p.is_dir()]
     tf_dirs = [p.resolve() for p in tf_dirs]
+    print(f"looking at {[str(d) for d in tf_dirs]}...")
 
     results: dict[str, datetime] = {}
 
