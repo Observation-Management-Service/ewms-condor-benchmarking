@@ -4,6 +4,7 @@ import argparse
 import asyncio
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
@@ -22,6 +23,8 @@ def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
                     timestamp_str = line[:23]  # '2025-06-24 13:04:17.464'
                     try:
                         dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S.%f")
+                        dt = dt.replace(tzinfo=ZoneInfo("America/Chicago"))
+                        dt = dt.astimezone(ZoneInfo("UTC"))
                         if latest_time is None or dt > latest_time:
                             latest_time = dt
                     except ValueError:
@@ -44,7 +47,7 @@ async def get_creation_time_for_wf(rc: RestClient, tf_dname: str) -> datetime:
 
     resp = await rc.request("GET", f"/v1/workflows/{workflow_id}")
 
-    start_time = datetime.fromtimestamp(resp["timestamp"])
+    start_time = datetime.fromtimestamp(resp["timestamp"], tz=ZoneInfo("UTC"))
     print(f"-> {start_time=}")
     return start_time
 
