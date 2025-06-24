@@ -82,6 +82,7 @@ async def main():
         final_time = get_final_time_for_taskforce(tf_path)
         start_time = await get_creation_time_for_wf(rc, tf_path.name)
         runtimes[tf_path.name] = (start_time, final_time)
+        print(f"-> {start_time=} to {final_time=} = {final_time - start_time}")
 
     # Print sorted by taskforce ID
     for tf_dname in sorted(runtimes):
