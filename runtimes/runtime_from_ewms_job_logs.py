@@ -2,7 +2,7 @@
 
 import argparse
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -10,7 +10,7 @@ from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 
 def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
-    latest_time: datetime | None = None
+    times: list[tuple[Path, datetime]] = []
 
     print(f"parsing {tf_path}...")
 
@@ -18,38 +18,56 @@ def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
         try:
             with err_file.open() as f:
                 for line in f:
-                    if "just now" not in line:
+                    if "Done Tasking:" not in line:
                         continue
                     timestamp_str = line[:23]  # '2025-06-24 13:04:17.464'
                     try:
                         dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S.%f")
-                        dt = dt.replace(tzinfo=ZoneInfo("America/Chicago"))
-                        dt = dt.astimezone(ZoneInfo("UTC"))
-                        if latest_time is None or dt > latest_time:
-                            latest_time = dt
+                        times.append((Path(err_file), dt))
                     except ValueError:
                         raise
         except Exception as e:
             print(f"[WARN] Could not read {err_file}: {e}")
 
-    print(f"-> {latest_time=}")
-    return latest_time
+    # set timezones
+    for i, (fpath, naive_dt) in enumerate(times):
+        with open(fpath.with_suffix(".out"), "r") as f:
+            for line in f:
+                # ex: "║  Today:  2025-06-21 08:16:55+02:00"
+                prefix = "║  Today: "
+                if not line.startswith(prefix):
+                    continue
+                # print(line)
+                time_str = line.removeprefix(prefix).strip().removesuffix("║").strip()
+                # print(f"`{time_str}`")
+                dt_with_tz = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S%z")
+                # apply tz, then convert to UTC
+                times[i] = (
+                    fpath,
+                    naive_dt.replace(tzinfo=dt_with_tz.tzinfo).astimezone(timezone.utc),
+                )
+                break  # stop reading this .out file
+
+    # just_times = sorted(x[1] for x in times)
+    # pprint.pprint(just_times)
+    # pprint.pprint(just_times[0])
+    # pprint.pprint(just_times[-1])
+    return max(x[1] for x in times)
 
 
-async def get_creation_time_for_wf(rc: RestClient, tf_dname: str) -> datetime:
+async def get_creation_time_for_wf(rc: RestClient, tf_id: str) -> datetime:
+    # resp = await rc.request("GET", f"/v1/taskforces/{tf_id}")
+    # print(json.dumps(resp, indent=2))
 
-    def _to_workflow_id(tf_dir: str) -> str:
-        # ewms-taskforce-TF-685643b1-7a50f872-ba2017b8-05bfe8b1 -> WF-685643b1-7a50f872
-        parts = tf_dir.split("-")
-        return f"WF-{parts[3]}-{parts[4]}"
+    def _to_workflow_id(tf_id: str) -> str:
+        # TF-685643b1-7a50f872-ba2017b8-05bfe8b1 -> WF-685643b1-7a50f872
+        parts = tf_id.split("-")
+        return f"WF-{parts[1]}-{parts[2]}"
 
-    workflow_id = _to_workflow_id(tf_dname)
-
+    workflow_id = _to_workflow_id(tf_id)
     resp = await rc.request("GET", f"/v1/workflows/{workflow_id}")
 
-    start_time = datetime.fromtimestamp(resp["timestamp"], tz=ZoneInfo("UTC"))
-    print(f"-> {start_time=}")
-    return start_time
+    return datetime.fromtimestamp(resp["timestamp"], tz=ZoneInfo("UTC"))
 
 
 async def main():
@@ -83,9 +101,14 @@ async def main():
     runtimes: dict[str, tuple[datetime, datetime]] = {}
     for tf_path in tf_dirs:
         final_time = get_final_time_for_taskforce(tf_path)
-        start_time = await get_creation_time_for_wf(rc, tf_path.name)
+        print(f"-> {final_time=}")
+        start_time = await get_creation_time_for_wf(
+            rc,
+            tf_path.name.removeprefix("ewms-taskforce-"),
+        )
+        print(f"-> {start_time=}")
         runtimes[tf_path.name] = (start_time, final_time)
-        print(f"-> {start_time=} to {final_time=} = {final_time - start_time}")
+        print(f"RUNTIME: {final_time - start_time}")
 
     # Print sorted by taskforce ID
     for tf_dname in sorted(runtimes):
