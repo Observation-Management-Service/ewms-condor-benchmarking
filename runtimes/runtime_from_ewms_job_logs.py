@@ -20,6 +20,9 @@ def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
                 for line in f:
                     if "Done Tasking:" not in line:
                         continue
+                    if "completed 0 task(s)" in line:
+                        # ignore pilots that started after all tasks were done
+                        continue
                     timestamp_str = line[:23]  # '2025-06-24 13:04:17.464'
                     try:
                         dt = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S.%f")
