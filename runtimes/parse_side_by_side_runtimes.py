@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import numpy as np
+import plotext
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 
@@ -238,6 +240,107 @@ def match_side_by_sides(
     return matches
 
 
+def _fmt_td(seconds: float) -> str:
+    """Format seconds as H:MM:SS.sss"""
+    sign = "-" if seconds < 0 else ""
+    td = timedelta(seconds=abs(seconds))
+    total_seconds = int(td.total_seconds())
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    millis = td.microseconds // 1000
+    return f"{sign}{hours}:{minutes:02}:{seconds:02}.{millis:03}"
+
+
+def summarize_timedeltas(name: str, td_list: list[timedelta]) -> str:
+    secs = np.array([td.total_seconds() for td in td_list])
+    return (
+        f"{name}:\n"
+        f"  count : {len(td_list)}\n"
+        f"  mean  : {_fmt_td(np.mean(secs))}\n"
+        f"  std   : {_fmt_td(np.std(secs))}\n"
+        f"  median: {_fmt_td(np.median(secs))}\n"
+        f"  p25   : {_fmt_td(np.percentile(secs, 25))}\n"
+        f"  p75   : {_fmt_td(np.percentile(secs, 75))}\n"
+        f"  min   : {_fmt_td(np.min(secs))}\n"
+        f"  max   : {_fmt_td(np.max(secs))}\n"
+    )
+
+
+def ascii_box_plot(arr: np.ndarray, width=40) -> str:
+    """Return a text boxplot visualization using ├───■───┤ characters."""
+    q1 = np.percentile(arr, 25)
+    q2 = np.median(arr)
+    q3 = np.percentile(arr, 75)
+    min_ = arr.min()
+    max_ = arr.max()
+
+    def pos(val):
+        return (
+            int(round((val - min_) / (max_ - min_) * (width - 1)))
+            if max_ > min_
+            else width // 2
+        )
+
+    line = [" "] * width
+    line[pos(min_)] = "│"
+    line[pos(q1)] = "├"
+    line[pos(q2)] = "■"
+    line[pos(q3)] = "┤"
+    line[pos(max_)] = "│"
+
+    return "  boxplot   : " + "".join(line) + f"  [{min_:.2f} — {max_:.2f}]"
+
+
+def summarize_ratios(name: str, vals: list[float]) -> str:
+    arr = np.array(vals)
+
+    def metrics(ratio: float) -> str:
+        if ratio <= 0:
+            return "invalid ratio"
+
+        # Derived metrics
+        pct_faster = (1 / ratio - 1) * 100  # e.g. 0.5 → 100% faster
+        pct_slower = (ratio - 1) * 100  # e.g. 2.0 → 100% slower
+        time_saved = (1 - ratio) * 100  # e.g. 0.6 → 40% time saved
+        speedup = 1 / ratio  # e.g. 0.5 → 2x speedup
+        log_speedup = np.log2(speedup)  # log₂ speedup
+
+        # Directional wording
+        if ratio < 1:
+            dir_desc = f"{pct_faster:6.1f}% faster"
+        elif ratio > 1:
+            dir_desc = f"{pct_slower:6.1f}% slower"
+        else:
+            dir_desc = " equal speed     "
+
+        return (
+            f"{ratio:8.4f}  → {dir_desc}, "
+            f"{time_saved:5.1f}% time saved, "
+            f"{speedup:5.2f}× speedup, "
+            f"log₂ speedup: {log_speedup:4.2f}"
+        )
+
+    mean = arr.mean()
+    std = arr.std()
+    median = np.median(arr)
+    p25 = np.percentile(arr, 25)
+    p75 = np.percentile(arr, 75)
+    min_ = arr.min()
+    max_ = arr.max()
+
+    return (
+        f"{name} (EWMS / Classical):\n"
+        f"  count     : {len(vals)}\n"
+        f"  mean      : {metrics(mean)}\n"
+        f"  std dev   : {std:.4f}\n"
+        f"  median    : {metrics(median)}\n"
+        f"  p25       : {metrics(p25)}\n"
+        f"  p75       : {metrics(p75)}\n"
+        f"  min       : {metrics(min_)}\n"
+        f"  max       : {metrics(max_)}\n"
+    )
+
+
 def compare_runtime_stats(
     ewms_runtimes: dict[str, tuple[datetime, datetime]],
     classical_runtimes: dict[str, tuple[datetime, datetime]],
@@ -254,7 +357,6 @@ def compare_runtime_stats(
 
         ewms_dur = ewms_end - ewms_start
         class_dur = class_end - class_start
-        abs_diff = ewms_dur - class_dur
         ratio = (
             ewms_dur.total_seconds() / class_dur.total_seconds()
             if class_dur.total_seconds()
@@ -267,8 +369,8 @@ def compare_runtime_stats(
                 "classical": class_name,
                 "ewms_duration": ewms_dur,
                 "classical_duration": class_dur,
-                "abs_diff": abs_diff,
                 "ratio": ratio,
+                "abs_diff": ewms_dur - class_dur,
             }
         )
 
@@ -276,52 +378,36 @@ def compare_runtime_stats(
         print("No matched runs found. Skipping statistics.")
         return
 
-    def fmt_td(td: timedelta) -> str:
-        total = td.total_seconds()
-        sign = "-" if total < 0 else ""
-        total = abs(total)
-        hours, rem = divmod(total, 3600)
-        minutes, seconds = divmod(rem, 60)
-        return f"{sign}{int(hours):02}:{int(minutes):02}:{seconds:06.3f}"
-
-    def summarize(name: str, tds: list[timedelta]) -> str:
-        mean = sum(tds, timedelta()) / len(tds)
-        return (
-            f"{name}:\n"
-            f"  count: {len(tds)}\n"
-            f"  mean : {fmt_td(mean)}\n"
-            f"  min  : {fmt_td(min(tds))}\n"
-            f"  max  : {fmt_td(max(tds))}\n"
-        )
-
-    def summarize_ratios(name: str, vals: list[float]) -> str:
-        return (
-            f"{name}:\n"
-            f"  count: {len(vals)}\n"
-            f"  mean : {sum(vals)/len(vals):.4f}\n"
-            f"  min  : {min(vals):.4f}\n"
-            f"  max  : {max(vals):.4f}\n"
-        )
-
     ewms_durations = [d["ewms_duration"] for d in diffs]
     classical_durations = [d["classical_duration"] for d in diffs]
-    abs_diffs = [d["abs_diff"] for d in diffs]
     ratios = [d["ratio"] for d in diffs]
+    abs_diffs = [d["abs_diff"] for d in diffs]
 
-    print(summarize("EWMS durations", ewms_durations))
-    print(summarize("Classical durations", classical_durations))
-    print(summarize("EWMS - Classical (abs diff)", abs_diffs))
+    print(summarize_timedeltas("EWMS durations", ewms_durations))
+    print(summarize_timedeltas("Classical durations", classical_durations))
+    print(summarize_timedeltas("EWMS - Classical (abs diff)", abs_diffs))
+
     print(summarize_ratios("EWMS/Classical ratio", ratios))
-
-    # optional: write raw data
-    class EnhancedJSONEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, (datetime, timedelta)):
-                return str(obj)
-            return super().default(obj)
+    plotext.clear_figure()
+    plotext.box([ratios])
+    plotext.title("EWMS vs Classical Runtime Ratios")
+    plotext.plotsize(17, 20)
+    plotext.show()
 
     with open("runtime-comparison.json", "w") as f:
-        json.dump(diffs, f, indent=2, cls=EnhancedJSONEncoder)
+        json.dump(
+            [
+                {
+                    **d,
+                    "ewms_duration": d["ewms_duration"].total_seconds(),
+                    "classical_duration": d["classical_duration"].total_seconds(),
+                    "abs_diff": d["abs_diff"].total_seconds(),
+                }
+                for d in diffs
+            ],
+            f,
+            indent=2,
+        )
 
 
 def _one_dir_or_many(dpath: Path, many_prefix: str) -> list[Path]:
