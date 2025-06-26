@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import json
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -196,31 +196,30 @@ async def get_classical_runtimes(
 def match_side_by_sides(
     ewms_runtimes: dict[str, tuple[datetime, datetime]],
     classical_runtimes: dict[str, tuple[datetime, datetime]],
-) -> dict[str, tuple[datetime, datetime]]:
+) -> list[tuple[str, str]]:
     """Match EWMS and classical runs by start time (within window)"""
     print(
-        f"\nMatching runtimes (within 5 min) {len(ewms_runtimes.keys())=} and {len(classical_runtimes.keys())=}..."
+        f"\nMatching runtimes (within 5 min) {len(ewms_runtimes)=} and {len(classical_runtimes)=}..."
     )
     window = 5 * 60
     used_classical = set()
+    matches = []
 
     for ewms_name, (ewms_start, ewms_end) in sorted(ewms_runtimes.items()):
-        # print(f"matching {ewms_name}...")
         best_match = None
         smallest_diff = float("inf")
 
         for class_name, (class_start, class_end) in sorted(classical_runtimes.items()):
             if class_name in used_classical:
                 continue
-            # print(f"-> trying {class_name}...")
             diff = abs((ewms_start - class_start).total_seconds())
-            # print(f"{ewms_start=} vs {class_start=} ({ewms_start-class_start})")
             if diff < window and diff < smallest_diff:
                 smallest_diff = diff
                 best_match = class_name
 
         if best_match:
             used_classical.add(best_match)
+            matches.append((ewms_name, best_match))
             class_start, class_end = classical_runtimes[best_match]
             print(f"\n🟢 {ewms_name} ↔ {best_match}")
             print(f"    EWMS     : {ewms_start} — {ewms_end} ({ewms_end - ewms_start})")
@@ -232,10 +231,97 @@ def match_side_by_sides(
                 f"\n🔴 {ewms_name} — no classical match found within {window/60} min ({ewms_start})"
             )
 
-    for class_name in sorted(set(classical_runtimes.keys()) - used_classical):
-        print(
-            f"\n🔴 {class_name} — unmatched classical ({classical_runtimes[class_name][1]})"
+    for class_name in sorted(set(classical_runtimes) - used_classical):
+        class_start, class_end = classical_runtimes[class_name]
+        print(f"\n🔴 {class_name} — unmatched classical ({class_end})")
+
+    return matches
+
+
+def compare_runtime_stats(
+    ewms_runtimes: dict[str, tuple[datetime, datetime]],
+    classical_runtimes: dict[str, tuple[datetime, datetime]],
+    runtimes_side_by_side: list[tuple[str, str]],
+):
+    """Compare EWMS and classical runtimes for matched pairs."""
+    print("\n📊 Runtime comparison stats:")
+
+    diffs = []
+
+    for ewms_name, class_name in runtimes_side_by_side:
+        ewms_start, ewms_end = ewms_runtimes[ewms_name]
+        class_start, class_end = classical_runtimes[class_name]
+
+        ewms_dur = ewms_end - ewms_start
+        class_dur = class_end - class_start
+        abs_diff = ewms_dur - class_dur
+        ratio = (
+            ewms_dur.total_seconds() / class_dur.total_seconds()
+            if class_dur.total_seconds()
+            else float("inf")
         )
+
+        diffs.append(
+            {
+                "ewms": ewms_name,
+                "classical": class_name,
+                "ewms_duration": ewms_dur,
+                "classical_duration": class_dur,
+                "abs_diff": abs_diff,
+                "ratio": ratio,
+            }
+        )
+
+    if not diffs:
+        print("No matched runs found. Skipping statistics.")
+        return
+
+    def fmt_td(td: timedelta) -> str:
+        total = td.total_seconds()
+        sign = "-" if total < 0 else ""
+        total = abs(total)
+        hours, rem = divmod(total, 3600)
+        minutes, seconds = divmod(rem, 60)
+        return f"{sign}{int(hours):02}:{int(minutes):02}:{seconds:06.3f}"
+
+    def summarize(name: str, tds: list[timedelta]) -> str:
+        mean = sum(tds, timedelta()) / len(tds)
+        return (
+            f"{name}:\n"
+            f"  count: {len(tds)}\n"
+            f"  mean : {fmt_td(mean)}\n"
+            f"  min  : {fmt_td(min(tds))}\n"
+            f"  max  : {fmt_td(max(tds))}\n"
+        )
+
+    def summarize_ratios(name: str, vals: list[float]) -> str:
+        return (
+            f"{name}:\n"
+            f"  count: {len(vals)}\n"
+            f"  mean : {sum(vals)/len(vals):.4f}\n"
+            f"  min  : {min(vals):.4f}\n"
+            f"  max  : {max(vals):.4f}\n"
+        )
+
+    ewms_durations = [d["ewms_duration"] for d in diffs]
+    classical_durations = [d["classical_duration"] for d in diffs]
+    abs_diffs = [d["abs_diff"] for d in diffs]
+    ratios = [d["ratio"] for d in diffs]
+
+    print(summarize("EWMS durations", ewms_durations))
+    print(summarize("Classical durations", classical_durations))
+    print(summarize("EWMS - Classical (abs diff)", abs_diffs))
+    print(summarize_ratios("EWMS/Classical ratio", ratios))
+
+    # optional: write raw data
+    class EnhancedJSONEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, (datetime, timedelta)):
+                return str(obj)
+            return super().default(obj)
+
+    with open("runtime-comparison.json", "w") as f:
+        json.dump(diffs, f, indent=2, cls=EnhancedJSONEncoder)
 
 
 def _one_dir_or_many(dpath: Path, many_prefix: str) -> list[Path]:
@@ -291,6 +377,7 @@ async def main():
 
     # figure runtimes stats
     runtimes_side_by_side = match_side_by_sides(ewms_runtimes, classical_runtimes)
+    compare_runtime_stats(ewms_runtimes, classical_runtimes, runtimes_side_by_side)
 
 
 if __name__ == "__main__":
