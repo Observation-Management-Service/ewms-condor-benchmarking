@@ -11,6 +11,23 @@ from zoneinfo import ZoneInfo
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 
+class DidNotFinishException(Exception):
+    """Raised when a workflow did not finish (ex: cancelled)."""
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return {"__datetime__": obj.isoformat()}
+        return super().default(obj)
+
+
+def decode_datetime(obj):
+    if "__datetime__" in obj:
+        return datetime.fromisoformat(obj["__datetime__"])
+    return obj
+
+
 def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
     times: list[tuple[Path, datetime]] = []
 
@@ -33,6 +50,9 @@ def get_final_time_for_taskforce(tf_path: Path) -> datetime | None:
                         raise
         except Exception as e:
             print(f"[WARN] Could not read {err_file}: {e}")
+
+    if not times:
+        raise DidNotFinishException()
 
     # set timezones
     for i, (fpath, naive_dt) in enumerate(times):
@@ -92,7 +112,13 @@ async def get_ewms_runtimes(
     # parse dirs and query ewms
     runtimes: dict[str, tuple[datetime, datetime]] = {}
     for tf_path in tf_dirs:
-        end = get_final_time_for_taskforce(tf_path)
+        print(f"\n{tf_path.name}")
+
+        try:
+            end = get_final_time_for_taskforce(tf_path)
+        except DidNotFinishException:
+            print(f"-> did not finish -- so, no runtime")
+            continue
         print(f"-> {end=}")
         start = await get_creation_time_for_wf(
             rc,
@@ -103,13 +129,13 @@ async def get_ewms_runtimes(
         print(f"RUNTIME: {end - start}")
 
     # Print sorted by taskforce ID
-    for tf_dname in sorted(runtimes):
-        start, end = runtimes[tf_dname]
-        print(
-            f"{tf_dname} start={start.isoformat(sep=' ')} "
-            f"end={end.isoformat(sep=' ')} "
-            f"duration={end - start}"
-        )
+    # for tf_dname in sorted(runtimes):
+    #     start, end = runtimes[tf_dname]
+    #     print(
+    #         f"{tf_dname} start={start.isoformat(sep=' ')} "
+    #         f"end={end.isoformat(sep=' ')} "
+    #         f"duration={end - start}"
+    #     )
 
     return runtimes
 
@@ -123,11 +149,13 @@ async def get_classical_runtimes(
         for d in runs_dirs
     ]
 
-    print(f"looking at {[str(d) for d in dag_dirs]}...")
+    print(f"\nlooking at {[str(d) for d in dag_dirs]}...")
 
     # parse dirs and query ewms
     runtimes: dict[str, tuple[datetime, datetime]] = {}
     for dag in dag_dirs:
+        name = f"{dag.parent.name}/{dag.name}"
+        print(f"\n{name}")
 
         # Find the single metrics file
         metrics_file = list(dag.rglob("*.dag.metrics"))
@@ -159,8 +187,55 @@ async def get_classical_runtimes(
         print(f"-> {end=}")
         print(f"-> {start=}")
 
-        runtimes[dag.name] = (start, end)
+        runtimes[name] = (start, end)
         print(f"RUNTIME: {end - start}")
+
+    return runtimes
+
+
+def match_side_by_sides(
+    ewms_runtimes: dict[str, tuple[datetime, datetime]],
+    classical_runtimes: dict[str, tuple[datetime, datetime]],
+) -> dict[str, tuple[datetime, datetime]]:
+    """Match EWMS and classical runs by start time (within window)"""
+    print(
+        f"\nMatching runtimes (within 5 min) {len(ewms_runtimes.keys())=} and {len(classical_runtimes.keys())=}..."
+    )
+    window = 5 * 60
+    used_classical = set()
+
+    for ewms_name, (ewms_start, ewms_end) in sorted(ewms_runtimes.items()):
+        # print(f"matching {ewms_name}...")
+        best_match = None
+        smallest_diff = float("inf")
+
+        for class_name, (class_start, class_end) in sorted(classical_runtimes.items()):
+            if class_name in used_classical:
+                continue
+            # print(f"-> trying {class_name}...")
+            diff = abs((ewms_start - class_start).total_seconds())
+            # print(f"{ewms_start=} vs {class_start=} ({ewms_start-class_start})")
+            if diff < window and diff < smallest_diff:
+                smallest_diff = diff
+                best_match = class_name
+
+        if best_match:
+            used_classical.add(best_match)
+            class_start, class_end = classical_runtimes[best_match]
+            print(f"\n🟢 {ewms_name} ↔ {best_match}")
+            print(f"    EWMS     : {ewms_start} — {ewms_end} ({ewms_end - ewms_start})")
+            print(
+                f"    Classical: {class_start} — {class_end} ({class_end - class_start})"
+            )
+        else:
+            print(
+                f"\n🔴 {ewms_name} — no classical match found within {window/60} min ({ewms_start})"
+            )
+
+    for class_name in sorted(set(classical_runtimes.keys()) - used_classical):
+        print(
+            f"\n🔴 {class_name} — unmatched classical ({classical_runtimes[class_name][1]})"
+        )
 
 
 def _one_dir_or_many(dpath: Path, many_prefix: str) -> list[Path]:
@@ -190,12 +265,32 @@ async def main():
     )
     args = parser.parse_args()
 
-    # ewms_runtimes = await get_ewms_runtimes(
-    #     _one_dir_or_many(args.ewms, "ewms-taskforce-TF-")
-    # )
-    classical_runtimes = await get_classical_runtimes(
-        _one_dir_or_many(args.classical, "runs_")
-    )
+    # classical
+    cache_path = Path("./classical-runtimes.cache.json")
+    if cache_path.exists():
+        with open(cache_path) as f:
+            classical_runtimes = json.load(f, object_hook=decode_datetime)
+    else:
+        classical_runtimes = await get_classical_runtimes(
+            _one_dir_or_many(args.classical, "runs_")
+        )
+        with open(cache_path, "w") as f:
+            json.dump(classical_runtimes, f, cls=DateTimeEncoder)
+
+    # ewms
+    cache_path = Path("./ewms-runtimes.cache.json")
+    if cache_path.exists():
+        with open(cache_path) as f:
+            ewms_runtimes = json.load(f, object_hook=decode_datetime)
+    else:
+        ewms_runtimes = await get_ewms_runtimes(
+            _one_dir_or_many(args.ewms, "ewms-taskforce-TF-")
+        )
+        with open(cache_path, "w") as f:
+            json.dump(ewms_runtimes, f, cls=DateTimeEncoder)
+
+    # figure runtimes stats
+    runtimes_side_by_side = match_side_by_sides(ewms_runtimes, classical_runtimes)
 
 
 if __name__ == "__main__":
