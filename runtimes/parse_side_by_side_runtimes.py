@@ -1,7 +1,9 @@
-"""Get the end times (time of last finished task) for each taskforce."""
+"""Get the runtimes for each EWMS workflow and the partner classical dag."""
 
 import argparse
 import asyncio
+import json
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -73,17 +75,10 @@ async def get_creation_time_for_wf(rc: RestClient, tf_id: str) -> datetime:
     return datetime.fromtimestamp(resp["timestamp"], tz=ZoneInfo("UTC"))
 
 
-async def main():
-    parser = argparse.ArgumentParser(
-        description="Get end times for one or more taskforces."
-    )
-    parser.add_argument(
-        "dir",
-        type=Path,
-        help="A taskforce dir or a directory containing multiple 'ewms-taskforce-TF-*' dirs (default: current directory)",
-    )
-    args = parser.parse_args()
-
+async def get_ewms_runtimes(
+    tf_dirs: list[Path],
+) -> dict[str, tuple[datetime, datetime]]:
+    """Get the runtimes for each EWMS workflow."""
     rc = SavedDeviceGrantAuth(
         "https://ewms-dev.icecube.aq",
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
@@ -92,26 +87,20 @@ async def main():
         retries=0,
     )
 
-    # Build list of taskforce directories to process
-    if args.dir.name.startswith("ewms-taskforce-TF-"):
-        tf_dirs = [args.dir]
-    else:
-        tf_dirs = [p for p in args.dir.glob("ewms-taskforce-TF-*") if p.is_dir()]
-    tf_dirs = [p.resolve() for p in tf_dirs]
     print(f"looking at {[str(d) for d in tf_dirs]}...")
 
     # parse dirs and query ewms
     runtimes: dict[str, tuple[datetime, datetime]] = {}
     for tf_path in tf_dirs:
-        final_time = get_final_time_for_taskforce(tf_path)
-        print(f"-> {final_time=}")
-        start_time = await get_creation_time_for_wf(
+        end = get_final_time_for_taskforce(tf_path)
+        print(f"-> {end=}")
+        start = await get_creation_time_for_wf(
             rc,
             tf_path.name.removeprefix("ewms-taskforce-"),
         )
-        print(f"-> {start_time=}")
-        runtimes[tf_path.name] = (start_time, final_time)
-        print(f"RUNTIME: {final_time - start_time}")
+        print(f"-> {start=}")
+        runtimes[tf_path.name] = (start, end)
+        print(f"RUNTIME: {end - start}")
 
     # Print sorted by taskforce ID
     for tf_dname in sorted(runtimes):
@@ -121,6 +110,92 @@ async def main():
             f"end={end.isoformat(sep=' ')} "
             f"duration={end - start}"
         )
+
+    return runtimes
+
+
+async def get_classical_runtimes(
+    runs_dirs: list[Path],
+) -> dict[str, tuple[datetime, datetime]]:
+    """Get the runtimes for each classical dag workflow."""
+    dag_dirs = [
+        d / "classical_dag__TPJ_0100__TR_0060__FP_0.00__DTRP_n__WSF_None"
+        for d in runs_dirs
+    ]
+
+    print(f"looking at {[str(d) for d in dag_dirs]}...")
+
+    # parse dirs and query ewms
+    runtimes: dict[str, tuple[datetime, datetime]] = {}
+    for dag in dag_dirs:
+
+        # Find the single metrics file
+        metrics_file = list(dag.rglob("*.dag.metrics"))
+        if not len(metrics_file) == 1:
+            print(metrics_file)
+            assert 0
+        metrics_file = metrics_file[0]
+
+        # Load and check
+        with metrics_file.open() as f:
+            data = json.load(f)
+
+        # sanity check
+        assert math.isclose(
+            data["end_time"] - data["start_time"],
+            data["duration"],
+            abs_tol=1e-3,  # allowable float diff
+        )
+
+        end = datetime.fromtimestamp(
+            data["end_time"],
+            ZoneInfo("America/Chicago"),
+        ).astimezone(timezone.utc)
+        start = datetime.fromtimestamp(
+            data["start_time"],
+            ZoneInfo("America/Chicago"),
+        ).astimezone(timezone.utc)
+
+        print(f"-> {end=}")
+        print(f"-> {start=}")
+
+        runtimes[dag.name] = (start, end)
+        print(f"RUNTIME: {end - start}")
+
+
+def _one_dir_or_many(dpath: Path, many_prefix: str) -> list[Path]:
+    dpath = dpath.resolve()
+    if dpath.name.startswith(many_prefix):
+        tf_dirs = [dpath]
+    else:
+        tf_dirs = [p for p in dpath.glob(f"{many_prefix}*") if p.is_dir()]
+    return [p.resolve() for p in tf_dirs]
+
+
+async def main():
+    parser = argparse.ArgumentParser(
+        description="Get the runtimes for each EWMS workflow and the partner classical dag."
+    )
+    parser.add_argument(
+        "--ewms",
+        required=True,
+        type=Path,
+        help="A directory containing multiple 'ewms-taskforce-TF-*' dirs",
+    )
+    parser.add_argument(
+        "--classical",
+        required=True,
+        type=Path,
+        help="A directory containing multiple condor logs for the classical runs",
+    )
+    args = parser.parse_args()
+
+    # ewms_runtimes = await get_ewms_runtimes(
+    #     _one_dir_or_many(args.ewms, "ewms-taskforce-TF-")
+    # )
+    classical_runtimes = await get_classical_runtimes(
+        _one_dir_or_many(args.classical, "runs_")
+    )
 
 
 if __name__ == "__main__":
