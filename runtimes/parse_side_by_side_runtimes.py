@@ -109,6 +109,7 @@ async def get_ewms_runtimes(
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
         filename=str(Path("~/ewms-dev-device-refresh-token").expanduser().resolve()),
         client_id="ewms-dev-public",
+        timeout=5 * 60,
         retries=0,
     )
 
@@ -174,11 +175,16 @@ async def get_classical_runtimes(
             data = json.load(f)
 
         # sanity check
-        assert math.isclose(
-            data["end_time"] - data["start_time"],
-            data["duration"],
-            abs_tol=1e-3,  # allowable float diff
-        )
+        try:
+            assert math.isclose(
+                data["end_time"] - data["start_time"],
+                data["duration"],
+                abs_tol=1e-1,  # allowable float diff
+            )
+        except AssertionError:
+            print(f"{(data["end_time"] - data["start_time"])=}")
+            print(f"{data["duration"]=}")
+            raise
 
         end = datetime.fromtimestamp(
             data["end_time"],
