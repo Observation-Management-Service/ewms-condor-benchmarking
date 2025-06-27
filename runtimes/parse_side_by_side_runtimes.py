@@ -104,7 +104,7 @@ async def get_ewms_runtimes(
     rc = SavedDeviceGrantAuth(
         "https://ewms-dev.icecube.aq",
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
-        filename=str(Path("~/ewms-dev-device-refresh-token").expanduser().resolve()),
+        filename=str(Path("~/device-refresh-token-ewms-dev").expanduser().resolve()),
         client_id="ewms-dev-public",
         timeout=5 * 60,
         retries=0,
