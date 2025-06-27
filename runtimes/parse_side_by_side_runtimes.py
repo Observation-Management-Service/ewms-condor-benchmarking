@@ -454,6 +454,7 @@ async def main():
     if cache_path.exists() and not args.no_cache:
         with open(cache_path) as f:
             classical_runtimes = json.load(f, object_hook=decode_datetime)
+        print(f"used cache: {cache_path}")
     else:
         classical_runtimes = await get_classical_runtimes(
             _one_dir_or_many(args.classical, "runs_")
@@ -466,6 +467,7 @@ async def main():
     if cache_path.exists() and not args.no_cache:
         with open(cache_path) as f:
             ewms_runtimes = json.load(f, object_hook=decode_datetime)
+        print(f"used cache: {cache_path}")
     else:
         ewms_runtimes = await get_ewms_runtimes(
             _one_dir_or_many(args.ewms, "ewms-taskforce-TF-")
