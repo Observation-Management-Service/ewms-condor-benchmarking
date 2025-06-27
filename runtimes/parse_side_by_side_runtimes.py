@@ -441,11 +441,17 @@ async def main():
         type=Path,
         help="A directory containing multiple condor logs for the classical runs",
     )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        default=False,
+        help="include to not use any cache",
+    )
     args = parser.parse_args()
 
     # classical
     cache_path = Path("./classical-runtimes.cache.json")
-    if cache_path.exists():
+    if cache_path.exists() and not args.no_cache:
         with open(cache_path) as f:
             classical_runtimes = json.load(f, object_hook=decode_datetime)
     else:
@@ -457,7 +463,7 @@ async def main():
 
     # ewms
     cache_path = Path("./ewms-runtimes.cache.json")
-    if cache_path.exists():
+    if cache_path.exists() and not args.no_cache:
         with open(cache_path) as f:
             ewms_runtimes = json.load(f, object_hook=decode_datetime)
     else:
