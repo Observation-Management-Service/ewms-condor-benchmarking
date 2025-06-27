@@ -12,9 +12,6 @@ import numpy as np
 import plotext
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
-CLASSICAL_CACHE_FILE = Path("./classical-runtimes.cache.json")
-EWMS_CACHE_FILE = Path("./ewms-runtimes.cache.json")
-
 
 class DidNotFinishException(Exception):
     """Raised when a workflow did not finish (ex: cancelled)."""
@@ -434,40 +431,40 @@ async def main():
     )
     parser.add_argument(
         "--ewms",
-        default=EWMS_CACHE_FILE,
+        required=True,
         type=Path,
-        dest="ewms_path",
-        help="A directory containing multiple 'ewms-taskforce-TF-*' dirs (or .json cache file)",
+        help="A directory containing multiple 'ewms-taskforce-TF-*' dirs",
     )
     parser.add_argument(
         "--classical",
-        default=CLASSICAL_CACHE_FILE,
+        required=True,
         type=Path,
-        dest="classical_path",
-        help="A directory containing multiple condor logs for the classical runs (or .json cache file)",
+        help="A directory containing multiple condor logs for the classical runs",
     )
     args = parser.parse_args()
 
     # classical
-    if args.classical_path.suffix == ".json":  # is cache file?
-        with open(args.classical_path) as f:
+    cache_path = Path("./classical-runtimes.cache.json")
+    if cache_path.exists():
+        with open(cache_path) as f:
             classical_runtimes = json.load(f, object_hook=decode_datetime)
     else:
         classical_runtimes = await get_classical_runtimes(
-            _one_dir_or_many(args.classical_path, "runs_")
+            _one_dir_or_many(args.classical, "runs_")
         )
-        with open(CLASSICAL_CACHE_FILE, "w") as f:
+        with open(cache_path, "w") as f:
             json.dump(classical_runtimes, f, cls=DateTimeEncoder)
 
     # ewms
-    if args.ewms_path.suffix == ".json":  # is cache file?
-        with open(args.ewms_path) as f:
+    cache_path = Path("./ewms-runtimes.cache.json")
+    if cache_path.exists():
+        with open(cache_path) as f:
             ewms_runtimes = json.load(f, object_hook=decode_datetime)
     else:
         ewms_runtimes = await get_ewms_runtimes(
-            _one_dir_or_many(args.ewms_path, "ewms-taskforce-TF-")
+            _one_dir_or_many(args.ewms, "ewms-taskforce-TF-")
         )
-        with open(EWMS_CACHE_FILE, "w") as f:
+        with open(cache_path, "w") as f:
             json.dump(ewms_runtimes, f, cls=DateTimeEncoder)
 
     # figure runtimes stats
